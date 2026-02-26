@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "react-native-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "26c9e2198b8534330ff7862a6c33d2eee07e2302810b80473deaced469db1b12"
+    },
+    "react-native-expert": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "e98281d545a3b08845ad11164d2476b276b4dc277af1f32d28c7b6524c6fa760"
+    }
+  }
+}
