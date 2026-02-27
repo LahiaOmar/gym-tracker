@@ -23,8 +23,6 @@ const DARK_GREY = BrandColors.darkGrey;
 const SLATE_400 = '#94A3B8';
 const SLATE_100 = '#F1F5F9';
 
-const WEEKLY_GOAL_SESSIONS = 4;
-
 function formatRelativeDate(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
@@ -80,7 +78,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user, repositories, isReady } = useStorage();
   const [recentActivities, setRecentActivities] = useState<RecentActivityItem[]>([]);
-  const [thisWeekSessions, setThisWeekSessions] = useState(0);
   const [thisWeekMinutes, setThisWeekMinutes] = useState(0);
   const [streak, setStreak] = useState(0);
   const [allSessionDates, setAllSessionDates] = useState<string[]>([]);
@@ -94,7 +91,6 @@ export default function HomeScreen() {
       from,
       to
     );
-    setThisWeekSessions(weekSessions.length);
 
     let totalMins = 0;
     for (const s of weekSessions) {
@@ -151,7 +147,6 @@ export default function HomeScreen() {
     );
   }
 
-  const weeklyProgress = Math.min(1, thisWeekSessions / WEEKLY_GOAL_SESSIONS);
   const displayName = user?.displayName ?? 'Guest';
   const thisWeekHours = (thisWeekMinutes / 60).toFixed(1);
 
@@ -171,20 +166,12 @@ export default function HomeScreen() {
             <Text style={styles.welcomeText}>Welcome back,</Text>
             <Text style={styles.userName}>{displayName}</Text>
           </View>
-          <View style={styles.profileIcon}>
+          <Pressable
+            style={({ pressed }) => [styles.profileIcon, pressed && styles.buttonPressed]}
+            onPress={() => router.push('/(tabs)/profile')}
+          >
             <MaterialIcons name="person" size={22} color="#fff" />
-          </View>
-        </View>
-        <View style={styles.weeklyGoal}>
-          <Text style={styles.weeklyGoalLabel}>WEEKLY GOAL</Text>
-          <View style={styles.weeklyGoalRow}>
-            <View style={styles.weeklyGoalTrack}>
-              <View style={[styles.weeklyGoalFill, { width: `${weeklyProgress * 100}%` }]} />
-            </View>
-            <Text style={styles.weeklyGoalValue}>
-              {thisWeekSessions}/{WEEKLY_GOAL_SESSIONS}
-            </Text>
-          </View>
+          </Pressable>
         </View>
       </View>
 
@@ -221,7 +208,7 @@ export default function HomeScreen() {
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.browseButton, pressed && styles.browseButtonPressed]}
-            onPress={() => router.push('/select-category')}
+            onPress={() => router.push('/sessions')}
           >
             <Text style={styles.browseButtonText}>Browse Routine</Text>
           </Pressable>
@@ -232,7 +219,7 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <Pressable onPress={() => router.push('/(tabs)/profile')}>
+          <Pressable onPress={() => router.push('/(tabs)/session')}>
             <Text style={styles.viewAllText}>VIEW ALL</Text>
           </Pressable>
         </View>
@@ -313,27 +300,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  weeklyGoal: { gap: 4 },
-  weeklyGoalLabel: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 2,
-  },
-  weeklyGoalRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  weeklyGoalTrack: {
-    flex: 1,
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  weeklyGoalFill: {
-    height: '100%',
-    backgroundColor: ACCENT,
-    borderRadius: 4,
-  },
-  weeklyGoalValue: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
   statsRow: {
     flexDirection: 'row',

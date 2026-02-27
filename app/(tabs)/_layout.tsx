@@ -2,7 +2,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
 import { BrandColors } from '@/constants/theme';
 
 export default function TabLayout() {
@@ -10,7 +9,6 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarButton: HapticTab,
         tabBarActiveTintColor: BrandColors.performanceAccent,
         tabBarInactiveTintColor: BrandColors.slate,
         tabBarStyle: {
@@ -52,8 +50,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <MaterialIcons name="settings" size={26} color={color} />,
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <MaterialIcons name="person" size={26} color={color} />,
         }}
       />
       <Tabs.Screen name="explore" options={{ href: null }} />

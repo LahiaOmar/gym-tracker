@@ -1,6 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/constants/theme';
@@ -73,6 +79,25 @@ export default function SessionDetailScreen() {
     }
   }, [isReady, id, repositories, load]);
 
+  const handleRemoveSession = useCallback(() => {
+    if (!id || !repositories) return;
+    Alert.alert(
+      'Remove session',
+      'Remove this session? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await repositories.workoutSession.delete(id);
+            router.back();
+          },
+        },
+      ]
+    );
+  }, [id, repositories, router]);
+
   if (!isReady || loading) {
     return (
       <ThemedView style={styles.centered}>
@@ -121,6 +146,12 @@ export default function SessionDetailScreen() {
           </ThemedView>
         ))}
       </ThemedView>
+      <Pressable
+        style={({ pressed }) => [styles.removeButton, pressed && styles.removeButtonPressed]}
+        onPress={handleRemoveSession}
+      >
+        <ThemedText style={styles.removeButtonText}>Remove session</ThemedText>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -141,4 +172,14 @@ const styles = StyleSheet.create({
   notes: { fontStyle: 'italic' },
   exercise: { marginTop: 12 },
   setLine: { marginTop: 2, fontSize: 14, color: BrandColors.text },
+  removeButton: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BrandColors.danger,
+    alignItems: 'center',
+  },
+  removeButtonPressed: { opacity: 0.9 },
+  removeButtonText: { color: BrandColors.danger, fontWeight: '600' },
 });
