@@ -12,9 +12,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/constants/theme';
+import { useSessions } from '@/contexts/SessionsContext';
 import { useStorage } from '@/contexts/StorageContext';
-import { setVolume } from '@/src/domain';
-import type { WorkoutSession } from '@/src/domain';
+import type { WorkoutSession } from '@/src/domain/entities';
 
 const PERFORMANCE_BLUE = BrandColors.performanceBlue;
 const ACCENT = BrandColors.performanceAccent;
@@ -48,13 +48,6 @@ function getThisWeekRange(): { from: string; to: string } {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-export interface RecentActivityItem {
-  session: WorkoutSession;
-  categoryName: string;
-  durationMins: number;
-  volume: number;
-}
-
 function computeStreak(sessionDates: string[]): number {
   const uniqueDays = Array.from(
     new Set(sessionDates.map((s) => new Date(s).toDateString()))
@@ -77,10 +70,9 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, repositories, isReady } = useStorage();
-  const [recentActivities, setRecentActivities] = useState<RecentActivityItem[]>([]);
+  const { sessionItems, isLoading: sessionsLoading } = useSessions();
   const [thisWeekMinutes, setThisWeekMinutes] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [allSessionDates, setAllSessionDates] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     if (!repositories || !user) return;
@@ -98,46 +90,19 @@ export default function HomeScreen() {
     }
     setThisWeekMinutes(totalMins);
 
-    const recentSessions = await repositories.workoutSession.list({
-      filter: { userId: user.id },
-      limit: 5,
-      sort: { field: 'startedAt', direction: 'desc' },
-    });
-
     const allSessions = await repositories.workoutSession.list({
       filter: { userId: user.id },
       limit: 500,
       sort: { field: 'startedAt', direction: 'desc' },
     });
-    setAllSessionDates(allSessions.map((s) => s.startedAt));
-    setStreak(computeStreak(allSessions.map((s) => s.startedAt)));
-
-    const activities: RecentActivityItem[] = [];
-    for (const session of recentSessions) {
-      const category = await repositories.trainingCategory.getById(session.categoryId);
-      const exercises = await repositories.workoutExercise.list({
-        filter: { sessionId: session.id },
-      });
-      let volume = 0;
-      for (const we of exercises) {
-        const sets = await repositories.workoutSet.list({
-          filter: { workoutExerciseId: we.id },
-        });
-        for (const set of sets) volume += setVolume(set);
-      }
-      activities.push({
-        session,
-        categoryName: category?.name ?? 'Workout',
-        durationMins: getSessionDurationMins(session),
-        volume,
-      });
-    }
-    setRecentActivities(activities);
+    setStreak(computeStreak(allSessions.map((s: { startedAt: string }) => s.startedAt)));
   }, [repositories, user]);
 
   useEffect(() => {
     if (isReady && user && repositories) load();
   }, [isReady, user?.id, repositories, load]);
+
+  const recentActivities = sessionItems.slice(0, 5);
 
   if (!isReady) {
     return (
@@ -224,7 +189,17 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         <View style={styles.activityList}>
-          {recentActivities.length === 0 ? (
+          {sessionsLoading ? (
+            <View style={styles.activityCard}>
+              <View style={styles.activityIconWrap}>
+                <MaterialIcons name="fitness-center" size={24} color={PERFORMANCE_BLUE} />
+              </View>
+              <View style={styles.activityContent}>
+                <ActivityIndicator size="small" color={ACCENT} style={styles.recentRefreshSpinner} />
+                <Text style={styles.activityMeta}>Updating…</Text>
+              </View>
+            </View>
+          ) : recentActivities.length === 0 ? (
             <View style={styles.activityCard}>
               <View style={styles.activityIconWrap}>
                 <MaterialIcons name="fitness-center" size={24} color={PERFORMANCE_BLUE} />
@@ -412,6 +387,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activityContent: { gap: 2 },
+  recentRefreshSpinner: { marginVertical: 4 },
   activityName: { fontSize: 14, fontWeight: '700', color: DARK_GREY },
   activityMeta: { fontSize: 12, color: SLATE_400 },
   activityRight: { alignItems: 'flex-end' },

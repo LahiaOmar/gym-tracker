@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/constants/theme';
+import { useSessions } from '@/contexts/SessionsContext';
 import { useStorage } from '@/contexts/StorageContext';
 import { setVolume } from '@/src/domain';
 import type { WorkoutSession, WorkoutExercise, WorkoutSet } from '@/src/domain';
@@ -25,6 +26,7 @@ export default function SessionSummaryScreen() {
   const insets = useSafeAreaInsets();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const { user, repositories, isReady } = useStorage();
+  const { refetch } = useSessions();
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [categoryName, setCategoryName] = useState('');
   const [exercisesWithSets, setExercisesWithSets] = useState<{ name: string; sets: WorkoutSet[] }[]>([]);
@@ -82,6 +84,11 @@ export default function SessionSummaryScreen() {
       load().finally(() => setLoading(false));
     }
   }, [isReady, sessionId, repositories, load]);
+
+  // Keep shared session list in sync so Home / Last Sessions show this session
+  useEffect(() => {
+    if (sessionId) refetch(true);
+  }, [sessionId, refetch]);
 
   if (!isReady || loading) {
     return (
