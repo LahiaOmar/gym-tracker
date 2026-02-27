@@ -113,7 +113,14 @@ export default function HomeScreen() {
   }
 
   const displayName = user?.displayName ?? 'Guest';
-  const thisWeekHours = (thisWeekMinutes / 60).toFixed(1);
+  const hours = Math.floor(thisWeekMinutes / 60);
+  const mins = thisWeekMinutes % 60;
+  const timeDisplay =
+    hours > 0 && mins > 0
+      ? `${hours}h ${mins}m`
+      : hours > 0
+        ? `${hours}h`
+        : `${mins}m`;
 
   return (
     <ScrollView
@@ -155,7 +162,7 @@ export default function HomeScreen() {
             <MaterialIcons name="timer" size={20} color={ACCENT} />
             <Text style={styles.statCardLabel}>TIME</Text>
           </View>
-          <Text style={styles.statCardValue}>{thisWeekHours}h</Text>
+          <Text style={styles.statCardValue}>{timeDisplay}</Text>
           <Text style={styles.statCardSub}>This week</Text>
         </View>
       </View>
@@ -173,7 +180,7 @@ export default function HomeScreen() {
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.browseButton, pressed && styles.browseButtonPressed]}
-            onPress={() => router.push('/sessions')}
+            onPress={() => router.push('/(tabs)/session')}
           >
             <Text style={styles.browseButtonText}>Browse Routine</Text>
           </Pressable>

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SessionsList } from '@/components/SessionsList';
 import { BrandColors } from '@/constants/theme';
 import { useActiveSession } from '@/contexts/ActiveSessionContext';
 import { useStorage } from '@/contexts/StorageContext';
@@ -208,12 +209,7 @@ export default function SessionTabScreen() {
   }
 
   if (!activeSessionId) {
-    return (
-      <ThemedView style={safeCentered}>
-        <ThemedText type="subtitle">Session</ThemedText>
-        <ThemedText style={styles.emptyText}>No active workout — Start from Home</ThemedText>
-      </ThemedView>
-    );
+    return <SessionsList />;
   }
 
   if (loading) {
