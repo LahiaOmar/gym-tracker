@@ -35,3 +35,29 @@ export function sessionsCountInRange(
     (s) => s.startedAt >= from && s.startedAt <= to
   ).length;
 }
+
+/** Session duration in minutes (from startedAt to endedAt). */
+export function getSessionDurationMins(session: WorkoutSession): number {
+  const start = new Date(session.startedAt).getTime();
+  const end = session.endedAt ? new Date(session.endedAt).getTime() : start;
+  return Math.round((end - start) / 60000);
+}
+
+/** Consecutive days with at least one session, counting from today backward. */
+export function computeStreak(sessionStartedAts: string[]): number {
+  const uniqueDays = Array.from(
+    new Set(sessionStartedAts.map((s) => new Date(s).toDateString()))
+  ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  if (uniqueDays.length === 0) return 0;
+  let streak = 0;
+  const today = new Date().toDateString();
+  let expected = today;
+  for (const d of uniqueDays) {
+    if (d !== expected) break;
+    streak++;
+    const next = new Date(expected);
+    next.setDate(next.getDate() - 1);
+    expected = next.toDateString();
+  }
+  return streak;
+}

@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandColors } from '@/constants/theme';
 import { useSessions } from '@/contexts/SessionsContext';
 import { useStorage } from '@/contexts/StorageContext';
-import type { WorkoutSession } from '@/src/domain/entities';
+import { getSessionDurationMins, computeStreak } from '@/src/domain';
 
 const PERFORMANCE_BLUE = BrandColors.performanceBlue;
 const ACCENT = BrandColors.performanceAccent;
@@ -35,35 +35,11 @@ function formatRelativeDate(iso: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function getSessionDurationMins(session: WorkoutSession): number {
-  const start = new Date(session.startedAt).getTime();
-  const end = session.endedAt ? new Date(session.endedAt).getTime() : start;
-  return Math.round((end - start) / 60000);
-}
-
 function getThisWeekRange(): { from: string; to: string } {
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - 7);
   return { from: from.toISOString(), to: to.toISOString() };
-}
-
-function computeStreak(sessionDates: string[]): number {
-  const uniqueDays = Array.from(
-    new Set(sessionDates.map((s) => new Date(s).toDateString()))
-  ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  if (uniqueDays.length === 0) return 0;
-  let streak = 0;
-  const today = new Date().toDateString();
-  let expected = today;
-  for (const d of uniqueDays) {
-    if (d !== expected) break;
-    streak++;
-    const next = new Date(expected);
-    next.setDate(next.getDate() - 1);
-    expected = next.toDateString();
-  }
-  return streak;
 }
 
 export default function HomeScreen() {
@@ -95,7 +71,7 @@ export default function HomeScreen() {
       limit: 500,
       sort: { field: 'startedAt', direction: 'desc' },
     });
-    setStreak(computeStreak(allSessions.map((s: { startedAt: string }) => s.startedAt)));
+    setStreak(computeStreak(allSessions.map((s) => s.startedAt)));
   }, [repositories, user]);
 
   useEffect(() => {
