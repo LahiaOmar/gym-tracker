@@ -14,6 +14,8 @@ import { LineChart, BarChart } from 'react-native-chart-kit';
 
 import { BrandColors } from '@/constants/theme';
 import { useStorage } from '@/contexts/StorageContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import {
   useGlobalStats,
   useExerciseStats,
@@ -28,24 +30,31 @@ import type { Exercise } from '@/src/domain';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-const CHART_WIDTH = Dimensions.get('window').width - 40;
+const SCREEN_PADDING = 20 * 2;
+const CARD_PADDING = 16 * 2;
+const CHART_WIDTH = Dimensions.get('window').width - SCREEN_PADDING - CARD_PADDING;
 const CHART_HEIGHT = 200;
-
-const chartConfig = {
-  backgroundColor: BrandColors.white,
-  backgroundGradientFrom: BrandColors.white,
-  backgroundGradientTo: BrandColors.backgroundSoft,
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`,
-  labelColor: () => BrandColors.slate,
-  style: { borderRadius: 12, paddingRight: 8 },
-  propsForLabels: { fontSize: 10 },
-};
 
 export default function StatsTabScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme() ?? 'light';
+  const cardBg = useThemeColor({}, 'card');
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+  const labelColor = useThemeColor({}, 'textSecondary');
   const { user, repositories, isReady } = useStorage();
   const [periodWeeks, setPeriodWeeks] = useState(4);
+
+  const chartConfig = {
+    backgroundColor: cardBg,
+    backgroundGradientFrom: cardBg,
+    backgroundGradientTo: colorScheme === 'dark' ? BrandColors.slate900 : BrandColors.backgroundSoft,
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`,
+    labelColor: () => labelColor,
+    style: { borderRadius: 12, paddingRight: 8 },
+    propsForLabels: { fontSize: 10 },
+  };
 
   const {
     weekVolume,
@@ -167,7 +176,7 @@ export default function StatsTabScreen() {
 
       {/* Summary cards */}
       <View style={styles.cardsRow}>
-        <ThemedView style={[styles.card, styles.cardHalf]}>
+        <ThemedView style={[styles.card, styles.cardHalf, { backgroundColor: cardBg, borderColor }]}>
           <ThemedText type="defaultSemiBold">This week</ThemedText>
           <ThemedText style={styles.detail}>
             Volume: {weekVolume.toLocaleString()} {unit}
@@ -177,7 +186,7 @@ export default function StatsTabScreen() {
             Time: {Math.floor(thisWeekMinutes / 60)}h {thisWeekMinutes % 60}m
           </ThemedText>
         </ThemedView>
-        <ThemedView style={[styles.card, styles.cardHalf]}>
+        <ThemedView style={[styles.card, styles.cardHalf, { backgroundColor: cardBg, borderColor }]}>
           <ThemedText type="defaultSemiBold">This month</ThemedText>
           <ThemedText style={styles.detail}>
             Volume: {monthVolume.toLocaleString()} {unit}
@@ -211,7 +220,7 @@ export default function StatsTabScreen() {
       </View>
 
       {/* Volume over time */}
-      <ThemedView style={styles.card}>
+      <ThemedView style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
         <ThemedText type="defaultSemiBold">Volume over time</ThemedText>
         {volumeByWeek.length > 0 ? (
           <LineChart
@@ -230,7 +239,7 @@ export default function StatsTabScreen() {
       </ThemedView>
 
       {/* Sessions per week */}
-      <ThemedView style={styles.card}>
+      <ThemedView style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
         <ThemedText type="defaultSemiBold">Sessions per week</ThemedText>
         {sessionsByWeek.length > 0 ? (
           <BarChart
@@ -248,7 +257,7 @@ export default function StatsTabScreen() {
       </ThemedView>
 
       {/* Session duration over time */}
-      <ThemedView style={styles.card}>
+      <ThemedView style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
         <ThemedText type="defaultSemiBold">Training time per week (min)</ThemedText>
         {durationByWeek.length > 0 ? (
           <BarChart
@@ -267,14 +276,14 @@ export default function StatsTabScreen() {
 
       {/* Volume by category */}
       {volumeByCategory.length > 0 && (
-        <ThemedView style={styles.card}>
+        <ThemedView style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
           <ThemedText type="defaultSemiBold">Volume by category</ThemedText>
           {volumeByCategory.map((c) => (
             <View key={c.categoryName} style={styles.barRow}>
-              <ThemedText style={styles.barLabel} numberOfLines={1}>
+              <ThemedText style={[styles.barLabel, { color: textColor }]} numberOfLines={1}>
                 {c.categoryName}
               </ThemedText>
-              <View style={styles.barTrack}>
+              <View style={[styles.barTrack, { backgroundColor: borderColor }]}>
                 <View
                   style={[
                     styles.barFill,
@@ -282,7 +291,7 @@ export default function StatsTabScreen() {
                   ]}
                 />
               </View>
-              <ThemedText style={styles.barValue}>
+              <ThemedText style={[styles.barValue, { color: labelColor }]}>
                 {c.volume.toLocaleString()} {unit}
               </ThemedText>
             </View>
@@ -292,14 +301,14 @@ export default function StatsTabScreen() {
 
       {/* Top exercises */}
       {topExercises.length > 0 && (
-        <ThemedView style={styles.card}>
+        <ThemedView style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
           <ThemedText type="defaultSemiBold">Top exercises by volume</ThemedText>
           {topExercises.map((e) => (
             <View key={e.exerciseName} style={styles.barRow}>
-              <ThemedText style={styles.barLabel} numberOfLines={1}>
+              <ThemedText style={[styles.barLabel, { color: textColor }]} numberOfLines={1}>
                 {e.exerciseName}
               </ThemedText>
-              <View style={styles.barTrack}>
+              <View style={[styles.barTrack, { backgroundColor: borderColor }]}>
                 <View
                   style={[
                     styles.barFill,
@@ -307,7 +316,7 @@ export default function StatsTabScreen() {
                   ]}
                 />
               </View>
-              <ThemedText style={styles.barValue}>
+              <ThemedText style={[styles.barValue, { color: labelColor }]}>
                 {e.volume.toLocaleString()} {unit} ({e.sessionCount})
               </ThemedText>
             </View>
@@ -317,7 +326,7 @@ export default function StatsTabScreen() {
 
       {/* Activity heatmap (simple grid) */}
       {activityHeatmap.length > 0 && (
-        <ThemedView style={styles.card}>
+        <ThemedView style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
           <ThemedText type="defaultSemiBold">Activity</ThemedText>
           <View style={styles.heatmapGrid}>
             {activityHeatmap.slice(-28).map((d) => (
@@ -343,7 +352,7 @@ export default function StatsTabScreen() {
       )}
 
       {/* Exercise stats + progress chart */}
-      <ThemedView style={styles.card}>
+      <ThemedView style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
         <ThemedText type="defaultSemiBold">Exercise stats</ThemedText>
         <TextInput
           style={styles.input}
@@ -415,6 +424,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BrandColors.border,
     backgroundColor: BrandColors.white,
+    overflow: 'hidden',
   },
   cardsRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
   cardHalf: { flex: 1 },
@@ -465,11 +475,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 8,
   },
-  barLabel: { flex: 1, fontSize: 12, color: BrandColors.text },
+  barLabel: { flex: 1, fontSize: 12 },
   barTrack: {
     flex: 1.2,
     height: 8,
-    backgroundColor: BrandColors.border,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -478,7 +487,7 @@ const styles = StyleSheet.create({
     backgroundColor: BrandColors.action,
     borderRadius: 4,
   },
-  barValue: { fontSize: 11, color: BrandColors.slate, minWidth: 70, textAlign: 'right' },
+  barValue: { fontSize: 11, minWidth: 70, textAlign: 'right' },
   heatmapGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
