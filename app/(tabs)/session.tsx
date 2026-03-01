@@ -1,16 +1,23 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  ExerciseCard,
+  FAB,
+  formatElapsedToParts,
+  SessionHeader,
+} from '@/components/session';
+import type { SetRowData } from '@/components/session';
 import { SessionsList } from '@/components/SessionsList';
 import { BrandColors } from '@/constants/theme';
 import { useActiveSession } from '@/contexts/ActiveSessionContext';
@@ -21,12 +28,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 type ExerciseWithName = WorkoutExercise & { exerciseName: string };
-
-function formatElapsed(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
 
 export default function SessionTabScreen() {
   const router = useRouter();
@@ -198,6 +199,21 @@ export default function SessionTabScreen() {
     await handleSelectExercise(ex.id);
   }, [exerciseSearch, repositories, user, handleSelectExercise]);
 
+  const timerParts = useMemo(() => formatElapsedToParts(elapsed), [elapsed]);
+
+  const setsRowDataByWeId = useMemo(() => {
+    const out: Record<string, SetRowData[]> = {};
+    for (const we of exercises) {
+      const sets = (setsByWeId[we.id] ?? []).slice().sort((a, b) => a.order - b.order);
+      out[we.id] = sets.map((set, idx) => ({
+        set,
+        index: idx,
+        isCurrent: idx === sets.length - 1,
+      }));
+    }
+    return out;
+  }, [exercises, setsByWeId]);
+
   const safeCentered = [styles.centered, { paddingTop: insets.top, paddingBottom: insets.bottom }];
 
   if (!isReady) {
@@ -221,65 +237,40 @@ export default function SessionTabScreen() {
   }
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="defaultSemiBold" style={styles.headerText}>{categoryName}</ThemedText>
-        <ThemedText type="defaultSemiBold" style={styles.headerText}>{formatElapsed(elapsed)}</ThemedText>
-        <Pressable style={styles.finishButton} onPress={() => setFinishModalVisible(true)}>
-          <ThemedText style={styles.finishButtonText}>Finish</ThemedText>
-        </Pressable>
-      </ThemedView>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: BrandColors.iosBg }]}>
+      <SessionHeader
+        title={categoryName}
+        timerParts={timerParts}
+        onFinish={() => setFinishModalVisible(true)}
+      />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
       >
-        {exercises.map((we) => (
-          <ThemedView key={we.id} style={styles.exerciseBlock}>
-            <ThemedText type="defaultSemiBold">{we.exerciseName}</ThemedText>
-            {(setsByWeId[we.id] ?? []).map((set, idx) => (
-              <ThemedView key={set.id} style={styles.setRow}>
-                <ThemedText style={styles.setNum}>{idx + 1}</ThemedText>
-                <TextInput
-                  style={styles.setInput}
-                  keyboardType="number-pad"
-                  placeholder="Reps"
-                  placeholderTextColor="#687076"
-                  value={set.reps ? String(set.reps) : ''}
-                  onChangeText={(t) => {
-                  const n = t ? parseInt(t, 10) : 0;
-                  if (!Number.isNaN(n)) handleUpdateSet(set.id, { reps: n });
-                }}
-                />
-                <TextInput
-                  style={styles.setInput}
-                  keyboardType="decimal-pad"
-                  placeholder="Weight"
-                  placeholderTextColor="#687076"
-                  value={set.weight ? String(set.weight) : ''}
-                  onChangeText={(t) => {
-                  const n = t ? parseFloat(t) : 0;
-                  if (!Number.isNaN(n)) handleUpdateSet(set.id, { weight: n });
-                }}
-                />
-                <Pressable onPress={() => handleDeleteSet(set.id)} style={styles.deleteSetBtn}>
-                  <ThemedText style={styles.deleteSetText}>✕</ThemedText>
-                </Pressable>
-              </ThemedView>
-            ))}
-            <Pressable style={styles.addSetBtn} onPress={() => handleAddSet(we.id)}>
-              <ThemedText style={styles.addSetText}>+ Add Set</ThemedText>
-            </Pressable>
-          </ThemedView>
-        ))}
-
-        <Pressable
-          style={styles.addExerciseBtn}
-          onPress={() => setAddExerciseModalVisible(true)}
-        >
-          <ThemedText style={styles.addExerciseText}>+ Add Exercise</ThemedText>
-        </Pressable>
+        {exercises.map((we, exerciseIndex) => {
+          const sets = setsRowDataByWeId[we.id] ?? [];
+          const hasSets = sets.length > 0;
+          return (
+            <View key={we.id} style={styles.exerciseCardWrap}>
+              <ExerciseCard
+                title={we.exerciseName}
+                subtitle={undefined}
+                imageUri={undefined}
+                sets={sets}
+                onAddSet={() => handleAddSet(we.id)}
+                onWeightChange={(setId, value) => handleUpdateSet(setId, { weight: value })}
+                onRepsChange={(setId, value) => handleUpdateSet(setId, { reps: value })}
+                hasSets={hasSets}
+                disabled={exerciseIndex > 0 && !hasSets}
+              />
+            </View>
+          );
+        })}
       </ScrollView>
+
+      <FAB onPress={() => setAddExerciseModalVisible(true)} />
 
       <Modal visible={finishModalVisible} transparent animationType="fade">
         <Pressable style={styles.modalOverlay} onPress={() => setFinishModalVisible(false)}>
@@ -293,14 +284,14 @@ export default function SessionTabScreen() {
               onChangeText={setSessionNotes}
               multiline
             />
-            <ThemedView style={styles.modalButtons}>
+            <View style={styles.modalButtons}>
               <Pressable style={styles.modalCancel} onPress={() => setFinishModalVisible(false)}>
                 <ThemedText>Cancel</ThemedText>
               </Pressable>
               <Pressable style={styles.modalSave} onPress={handleFinish}>
-                <ThemedText style={styles.finishButtonText}>Save</ThemedText>
+                <ThemedText style={styles.modalSaveText}>Save</ThemedText>
               </Pressable>
-            </ThemedView>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -353,60 +344,16 @@ export default function SessionTabScreen() {
           </ScrollView>
         </ThemedView>
       </Modal>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  emptyText: { marginTop: 8, textAlign: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: BrandColors.navy,
-    borderBottomWidth: 1,
-    borderBottomColor: BrandColors.border,
-  },
-  headerText: { color: BrandColors.white },
-  finishButton: {
-    backgroundColor: BrandColors.action,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  finishButtonText: { color: BrandColors.white, fontWeight: '600' },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16 },
-  exerciseBlock: { marginBottom: 24 },
-  setRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
-  setNum: { width: 24, fontSize: 14, color: BrandColors.text },
-  setInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-    minHeight: 44,
-    color: BrandColors.text,
-  },
-  deleteSetBtn: { padding: 8 },
-  deleteSetText: { color: BrandColors.danger, fontSize: 18 },
-  addSetBtn: { marginTop: 8 },
-  addSetText: { color: BrandColors.action, fontWeight: '600' },
-  addExerciseBtn: {
-    marginTop: 16,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: BrandColors.action,
-    borderRadius: 12,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-  },
-  addExerciseText: { color: BrandColors.action, fontWeight: '600' },
+  scrollContent: { padding: 16, gap: 16 },
+  exerciseCardWrap: { marginBottom: 16 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -430,11 +377,12 @@ const styles = StyleSheet.create({
   modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 20 },
   modalCancel: { padding: 12 },
   modalSave: {
-    backgroundColor: BrandColors.action,
+    backgroundColor: BrandColors.performanceAccent,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
   },
+  modalSaveText: { color: '#fff', fontWeight: '600' },
   modalFull: { flex: 1, padding: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   cancelText: { color: BrandColors.action },
