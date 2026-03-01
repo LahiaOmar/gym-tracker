@@ -1,16 +1,22 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+const TAB_BAR_BASE_HEIGHT = 88;
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const isDark = colorScheme === 'dark';
   const tabBarBg = isDark ? BrandColors.slate900 : BrandColors.white;
   const tabBarBorder = isDark ? BrandColors.slate800 : BrandColors.border;
   const tabBarInactive = isDark ? BrandColors.slate400 : BrandColors.slate;
+  const tabBarPaddingBottom = 24 + insets.bottom;
+  const tabBarHeight = TAB_BAR_BASE_HEIGHT + insets.bottom;
 
   return (
     <Tabs
@@ -23,8 +29,8 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: tabBarBorder,
           paddingTop: 16,
-          paddingBottom: 24,
-          height: 88,
+          paddingBottom: tabBarPaddingBottom,
+          height: tabBarHeight,
         },
         tabBarLabelStyle: {
           fontSize: 10,
