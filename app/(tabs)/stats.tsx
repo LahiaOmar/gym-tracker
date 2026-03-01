@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 
@@ -27,6 +30,11 @@ import {
   useActivityHeatmap,
 } from '@/hooks/useStats';
 import type { Exercise } from '@/src/domain';
+import {
+  formatWeekLabel,
+  getCurrentWeekStart,
+  getRangeForPeriod,
+} from '@/utils/period';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
@@ -43,7 +51,61 @@ export default function StatsTabScreen() {
   const textColor = useThemeColor({}, 'text');
   const labelColor = useThemeColor({}, 'textSecondary');
   const { user, repositories, isReady } = useStorage();
-  const [periodWeeks, setPeriodWeeks] = useState(4);
+  const [selectedWeekStart, setSelectedWeekStart] = useState(getCurrentWeekStart());
+  const [valuePickerVisible, setValuePickerVisible] = useState(false);
+  const [pickerDate, setPickerDate] = useState(() => new Date());
+  const latestPickerDateRef = useRef<Date>(new Date());
+
+  const getInitialPickerDate = useCallback((): Date => {
+    const [y, m, d] = selectedWeekStart.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }, [selectedWeekStart]);
+
+  const applyPickerDate = useCallback((date: Date) => {
+    const weekStart = new Date(date);
+    weekStart.setDate(date.getDate() - date.getDay());
+    setSelectedWeekStart(
+      `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`
+    );
+  }, []);
+
+  const handleOpenPicker = useCallback(() => {
+    const initial = getInitialPickerDate();
+    setPickerDate(initial);
+    latestPickerDateRef.current = initial;
+    setValuePickerVisible(true);
+  }, [getInitialPickerDate]);
+
+  const handlePickerChange = useCallback(
+    (event: { type: string }, date?: Date) => {
+      if (date != null) {
+        setPickerDate(date);
+        latestPickerDateRef.current = date;
+      }
+      if (Platform.OS === 'android') {
+        if (event.type === 'set') {
+          if (date != null) applyPickerDate(date);
+          setValuePickerVisible(false);
+        } else if (event.type === 'dismissed') {
+          setValuePickerVisible(false);
+        }
+      }
+    },
+    [applyPickerDate]
+  );
+
+  const handleBackdropPress = useCallback(() => {
+    applyPickerDate(latestPickerDateRef.current);
+    setValuePickerVisible(false);
+  }, [applyPickerDate]);
+
+  const minDate = useMemo(() => new Date(2020, 0, 1), []);
+  const maxDate = useMemo(() => new Date(), []);
+
+  const { from, to } = useMemo(
+    () => getRangeForPeriod('week', selectedWeekStart),
+    [selectedWeekStart]
+  );
 
   const chartConfig = {
     backgroundColor: cardBg,
@@ -68,28 +130,33 @@ export default function StatsTabScreen() {
   const { volumeByWeek, sessionsByWeek } = useTimeBucketedStats(
     repositories,
     user?.id ?? null,
-    periodWeeks
+    from,
+    to
   );
   const { data: durationByWeek } = useSessionDurationByWeek(
     repositories,
     user?.id ?? null,
-    periodWeeks
+    from,
+    to
   );
   const { data: volumeByCategory } = useVolumeByCategory(
     repositories,
     user?.id ?? null,
-    periodWeeks
+    from,
+    to
   );
   const { data: topExercises } = useTopExercises(
     repositories,
     user?.id ?? null,
-    periodWeeks,
+    from,
+    to,
     8
   );
   const { data: activityHeatmap } = useActivityHeatmap(
     repositories,
     user?.id ?? null,
-    periodWeeks
+    from,
+    to
   );
 
   const [exerciseSearch, setExerciseSearch] = useState('');
@@ -104,7 +171,8 @@ export default function StatsTabScreen() {
     repositories,
     user?.id ?? null,
     selectedExercise?.id ?? null,
-    periodWeeks
+    from,
+    to
   );
 
   const loadExercises = useCallback(async () => {
@@ -199,25 +267,38 @@ export default function StatsTabScreen() {
       {/* Period selector */}
       <View style={styles.periodRow}>
         <ThemedText type="defaultSemiBold">Period</ThemedText>
-        <View style={styles.periodButtons}>
-          <Pressable
-            style={[styles.periodBtn, periodWeeks === 4 && styles.periodBtnActive]}
-            onPress={() => setPeriodWeeks(4)}
-          >
-            <ThemedText style={periodWeeks === 4 ? styles.periodBtnTextActive : undefined}>
-              4 weeks
-            </ThemedText>
-          </Pressable>
-          <Pressable
-            style={[styles.periodBtn, periodWeeks === 12 && styles.periodBtnActive]}
-            onPress={() => setPeriodWeeks(12)}
-          >
-            <ThemedText style={periodWeeks === 12 ? styles.periodBtnTextActive : undefined}>
-              12 weeks
-            </ThemedText>
-          </Pressable>
-        </View>
+        <Pressable
+          style={[styles.periodValueBtn, { borderColor, backgroundColor: cardBg }]}
+          onPress={handleOpenPicker}
+        >
+          <ThemedText>{formatWeekLabel(selectedWeekStart)}</ThemedText>
+        </Pressable>
       </View>
+
+      <Modal
+        visible={valuePickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleBackdropPress}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={handleBackdropPress}>
+          <View
+            style={[styles.modalContent, { backgroundColor: cardBg, borderColor }]}
+            onStartShouldSetResponder={() => true}
+          >
+            {valuePickerVisible && (
+              <DateTimePicker
+                value={pickerDate}
+                mode="date"
+                display={Platform.OS === 'android' ? 'default' : 'spinner'}
+                minimumDate={minDate}
+                maximumDate={maxDate}
+                onChange={handlePickerChange}
+              />
+            )}
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* Volume over time */}
       <ThemedView style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
@@ -347,7 +428,9 @@ export default function StatsTabScreen() {
               />
             ))}
           </View>
-          <ThemedText style={styles.heatmapLegend}>Last 28 days • darker = more sessions</ThemedText>
+          <ThemedText style={styles.heatmapLegend}>
+            Days in period • darker = more sessions
+          </ThemedText>
         </ThemedView>
       )}
 
@@ -435,16 +518,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 20,
   },
-  periodButtons: { flexDirection: 'row', gap: 8 },
-  periodBtn: {
+  periodValueBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: BrandColors.border,
   },
-  periodBtnActive: { backgroundColor: BrandColors.action, borderColor: BrandColors.action },
-  periodBtnTextActive: { color: BrandColors.white },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    alignItems: 'center',
+  },
   chart: { marginTop: 8, borderRadius: 12 },
   chartTitle: { marginTop: 12, marginBottom: 4, color: BrandColors.slate },
   emptyText: { marginTop: 12, color: BrandColors.slate },

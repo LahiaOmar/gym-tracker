@@ -156,18 +156,18 @@ export type WeekDataPoint = { label: string; value: number };
 export function useTimeBucketedStats(
   repositories: SqliteRepositories | null,
   userId: string | null,
-  weeks: number
+  from: string,
+  to: string
 ) {
   const [volumeByWeek, setVolumeByWeek] = useState<WeekDataPoint[]>([]);
   const [sessionsByWeek, setSessionsByWeek] = useState<WeekDataPoint[]>([]);
 
   const load = useCallback(async () => {
-    if (!repositories || !userId || weeks < 1) {
+    if (!repositories || !userId || !from || !to) {
       setVolumeByWeek([]);
       setSessionsByWeek([]);
       return;
     }
-    const { from, to } = getRangeForWeeks(weeks);
     const sessions = await repositories.workoutSession.listSessionsByDateRange(userId, from, to);
 
     const volumeByWeekMap = new Map<string, number>();
@@ -198,7 +198,7 @@ export function useTimeBucketedStats(
     setSessionsByWeek(
       sortedKeys.map((label) => ({ label: label.slice(5), value: sessionsByWeekMap.get(label) ?? 0 }))
     );
-  }, [repositories, userId, weeks]);
+  }, [repositories, userId, from, to]);
 
   useEffect(() => {
     load();
@@ -213,16 +213,16 @@ export function useExerciseProgress(
   repositories: SqliteRepositories | null,
   userId: string | null,
   exerciseId: string | null,
-  weeks: number
+  from: string,
+  to: string
 ) {
   const [dataPoints, setDataPoints] = useState<ExerciseProgressPoint[]>([]);
 
   const load = useCallback(async () => {
-    if (!repositories || !userId || !exerciseId || weeks < 1) {
+    if (!repositories || !userId || !exerciseId || !from || !to) {
       setDataPoints([]);
       return;
     }
-    const { from, to } = getRangeForWeeks(weeks);
     const sets = await repositories.workoutSet.listSetsByExercise(userId, exerciseId, from, to);
 
     const bySession = new Map<string, WorkoutSet[]>();
@@ -253,7 +253,7 @@ export function useExerciseProgress(
     }
     points.sort((a, b) => a.date.localeCompare(b.date));
     setDataPoints(points);
-  }, [repositories, userId, exerciseId, weeks]);
+  }, [repositories, userId, exerciseId, from, to]);
 
   useEffect(() => {
     load();
@@ -267,16 +267,16 @@ export type CategoryVolume = { categoryName: string; volume: number };
 export function useVolumeByCategory(
   repositories: SqliteRepositories | null,
   userId: string | null,
-  weeks: number
+  from: string,
+  to: string
 ) {
   const [data, setData] = useState<CategoryVolume[]>([]);
 
   const load = useCallback(async () => {
-    if (!repositories || !userId || weeks < 1) {
+    if (!repositories || !userId || !from || !to) {
       setData([]);
       return;
     }
-    const { from, to } = getRangeForWeeks(weeks);
     const sessions = await repositories.workoutSession.listSessionsByDateRange(userId, from, to);
     const categoryIds = [...new Set(sessions.map((s) => s.categoryId))];
     const categoryMap = new Map<string, string>();
@@ -302,7 +302,7 @@ export function useVolumeByCategory(
         .map(([categoryName, volume]) => ({ categoryName, volume }))
         .sort((a, b) => b.volume - a.volume)
     );
-  }, [repositories, userId, weeks]);
+  }, [repositories, userId, from, to]);
 
   useEffect(() => {
     load();
@@ -316,17 +316,17 @@ export type TopExercise = { exerciseName: string; volume: number; sessionCount: 
 export function useTopExercises(
   repositories: SqliteRepositories | null,
   userId: string | null,
-  weeks: number,
+  from: string,
+  to: string,
   limit: number = 10
 ) {
   const [data, setData] = useState<TopExercise[]>([]);
 
   const load = useCallback(async () => {
-    if (!repositories || !userId || weeks < 1) {
+    if (!repositories || !userId || !from || !to) {
       setData([]);
       return;
     }
-    const { from, to } = getRangeForWeeks(weeks);
     const sessions = await repositories.workoutSession.listSessionsByDateRange(userId, from, to);
 
     const byExercise = new Map<
@@ -363,7 +363,7 @@ export function useTopExercises(
       .sort((a, b) => b.volume - a.volume)
       .slice(0, limit);
     setData(list);
-  }, [repositories, userId, weeks, limit]);
+  }, [repositories, userId, from, to, limit]);
 
   useEffect(() => {
     load();
@@ -375,16 +375,16 @@ export function useTopExercises(
 export function useSessionDurationByWeek(
   repositories: SqliteRepositories | null,
   userId: string | null,
-  weeks: number
+  from: string,
+  to: string
 ) {
   const [data, setData] = useState<WeekDataPoint[]>([]);
 
   const load = useCallback(async () => {
-    if (!repositories || !userId || weeks < 1) {
+    if (!repositories || !userId || !from || !to) {
       setData([]);
       return;
     }
-    const { from, to } = getRangeForWeeks(weeks);
     const sessions = await repositories.workoutSession.listSessionsByDateRange(userId, from, to);
     const byWeek = new Map<string, number>();
     for (const s of sessions) {
@@ -396,7 +396,7 @@ export function useSessionDurationByWeek(
     setData(
       sortedKeys.map((label) => ({ label: label.slice(5), value: byWeek.get(label) ?? 0 }))
     );
-  }, [repositories, userId, weeks]);
+  }, [repositories, userId, from, to]);
 
   useEffect(() => {
     load();
@@ -410,16 +410,16 @@ export type ActivityHeatmapDay = { date: string; sessions: number; volume: numbe
 export function useActivityHeatmap(
   repositories: SqliteRepositories | null,
   userId: string | null,
-  weeks: number
+  from: string,
+  to: string
 ) {
   const [data, setData] = useState<ActivityHeatmapDay[]>([]);
 
   const load = useCallback(async () => {
-    if (!repositories || !userId || weeks < 1) {
+    if (!repositories || !userId || !from || !to) {
       setData([]);
       return;
     }
-    const { from, to } = getRangeForWeeks(weeks);
     const sessions = await repositories.workoutSession.listSessionsByDateRange(userId, from, to);
     const byDay = new Map<string, { sessions: number; volume: number }>();
 
@@ -441,7 +441,7 @@ export function useActivityHeatmap(
       .map(([date, { sessions: s, volume }]) => ({ date, sessions: s, volume }))
       .sort((a, b) => a.date.localeCompare(b.date));
     setData(sorted);
-  }, [repositories, userId, weeks]);
+  }, [repositories, userId, from, to]);
 
   useEffect(() => {
     load();
