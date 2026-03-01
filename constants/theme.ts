@@ -8,8 +8,12 @@ import { Platform } from 'react-native';
 
 // —— Brand palette ——
 export const BrandColors = {
+  /** Primary blue — selected states, links, profile accent */
+  primary: '#1152D4',
   /** Headers, top sections, high-contrast backgrounds */
   navy: '#1E293B',
+  /** Deep navy — profile header, dark surfaces */
+  navyDeep: '#0F172A',
   /** Performance blue — hero header (design) */
   performanceBlue: '#0A1D37',
   /** Primary CTAs: Start Workout, Finish, Add Set */
@@ -36,6 +40,25 @@ export const BrandColors = {
   border: '#E2E8F0',
   /** Pressed/hover secondary */
   pressed: '#F8FAFC',
+  /** Light page background (profile, cards) */
+  backgroundLight: '#F6F6F8',
+  /** Dark page background */
+  backgroundDark: '#101622',
+  /** Slate muted (subtitles, labels) */
+  slate400: '#94A3B8',
+  /** Red tint for danger zone background */
+  dangerBgLight: '#FEF2F2',
+  dangerBgDark: 'rgba(127, 29, 29, 0.2)',
+  dangerBorderLight: '#FECACA',
+  dangerBorderDark: 'rgba(127, 29, 29, 0.3)',
+  /** Danger zone message text in dark mode (red-400) */
+  dangerTextDark: '#F87171',
+  /** Dark mode: segment track, card borders (slate-800) */
+  slate800: '#1E293B',
+  /** Dark mode: selected segment (slate-700) */
+  slate700: '#334155',
+  /** Dark mode: cards (slate-900) */
+  slate900: '#0F172A',
 } as const;
 
 const tintColorLight = BrandColors.action;
@@ -60,18 +83,18 @@ export const Colors = {
   },
   dark: {
     text: BrandColors.white,
-    textSecondary: BrandColors.slate,
-    background: '#0F172A',
-    card: BrandColors.navy,
+    textSecondary: BrandColors.slate400,
+    background: BrandColors.backgroundDark,
+    card: BrandColors.slate900,
     tint: tintColorDark,
-    icon: BrandColors.slate,
-    tabIconDefault: BrandColors.slate,
+    icon: BrandColors.slate400,
+    tabIconDefault: BrandColors.slate400,
     tabIconSelected: tintColorDark,
-    header: BrandColors.navy,
+    header: BrandColors.navyDeep,
     action: BrandColors.action,
     success: BrandColors.success,
     danger: BrandColors.danger,
-    border: BrandColors.slate,
+    border: BrandColors.slate800,
     link: BrandColors.action,
   },
 };

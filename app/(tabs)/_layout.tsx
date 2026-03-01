@@ -3,18 +3,25 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 
 import { BrandColors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const tabBarBg = isDark ? BrandColors.slate900 : BrandColors.white;
+  const tabBarBorder = isDark ? BrandColors.slate800 : BrandColors.border;
+  const tabBarInactive = isDark ? BrandColors.slate400 : BrandColors.slate;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: BrandColors.performanceAccent,
-        tabBarInactiveTintColor: BrandColors.slate,
+        tabBarInactiveTintColor: tabBarInactive,
         tabBarStyle: {
-          backgroundColor: BrandColors.white,
+          backgroundColor: tabBarBg,
           borderTopWidth: 1,
-          borderTopColor: BrandColors.border,
+          borderTopColor: tabBarBorder,
           paddingTop: 16,
           paddingBottom: 24,
           height: 88,
