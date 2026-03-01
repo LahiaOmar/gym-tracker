@@ -6,32 +6,35 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  ExerciseSetTableCard,
+  SessionDetailHeader,
+  SessionStatsOverviewCard,
+} from '@/components/session-detail';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import { BrandColors } from '@/constants/theme';
 import { useStorage } from '@/contexts/StorageContext';
 import { setVolume } from '@/src/domain';
 import type { WorkoutSession, WorkoutSet } from '@/src/domain';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+function formatDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
   });
 }
 
-function formatDuration(startedAt: string, endedAt: string | null): string {
+function formatDurationMins(startedAt: string, endedAt: string | null): string {
   if (!endedAt) return '—';
   const s = new Date(startedAt).getTime();
   const e = new Date(endedAt).getTime();
   const mins = Math.round((e - s) / 60000);
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
+  return `${mins} min${mins !== 1 ? 's' : ''}`;
 }
 
 export default function SessionDetailScreen() {
@@ -41,8 +44,14 @@ export default function SessionDetailScreen() {
   const { user, repositories, isReady } = useStorage();
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [categoryName, setCategoryName] = useState('');
-  const [exercisesWithSets, setExercisesWithSets] = useState<{ name: string; sets: WorkoutSet[] }[]>([]);
+  const [exercisesWithSets, setExercisesWithSets] = useState<{
+    name: string;
+    sets: WorkoutSet[];
+    exerciseId: string;
+  }[]>([]);
   const [totalVolume, setTotalVolume] = useState(0);
+  const [totalSets, setTotalSets] = useState(0);
+  const [prSetIndexByExercise, setPrSetIndexByExercise] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -58,18 +67,40 @@ export default function SessionDetailScreen() {
     setCategoryName(cat?.name ?? '');
 
     const weList = await repositories.workoutExercise.list({ filter: { sessionId: s.id } });
-    const list: { name: string; sets: WorkoutSet[] }[] = [];
+    const list: { name: string; sets: WorkoutSet[]; exerciseId: string }[] = [];
     let vol = 0;
+    let setCount = 0;
     for (const we of weList) {
       const ex = await repositories.exercise.getById(we.exerciseId);
       const sets = await repositories.workoutSet.list({ filter: { workoutExerciseId: we.id } });
-      list.push({ name: ex?.name ?? '?', sets });
+      list.push({ name: ex?.name ?? '?', sets, exerciseId: we.exerciseId });
       for (const set of sets) {
         vol += setVolume(set);
+        setCount += 1;
       }
     }
     setExercisesWithSets(list);
     setTotalVolume(vol);
+    setTotalSets(setCount);
+
+    const prIndices: number[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const { sets, exerciseId } = list[i];
+      const sessionMax = Math.max(0, ...sets.map((x) => x.weight));
+      if (sessionMax === 0) {
+        prIndices.push(-1);
+        continue;
+      }
+      const allSets = await repositories.workoutSet.listSetsByExercise(user.id, exerciseId);
+      const overallMax = Math.max(0, ...allSets.map((x) => x.weight));
+      if (sessionMax >= overallMax) {
+        const maxSetIndex = sets.findIndex((x) => x.weight === sessionMax);
+        prIndices.push(maxSetIndex >= 0 ? maxSetIndex : -1);
+      } else {
+        prIndices.push(-1);
+      }
+    }
+    setPrSetIndexByExercise(prIndices);
   }, [id, repositories, user]);
 
   useEffect(() => {
@@ -78,6 +109,10 @@ export default function SessionDetailScreen() {
       load().finally(() => setLoading(false));
     }
   }, [isReady, id, repositories, load]);
+
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
 
   const handleRemoveSession = useCallback(() => {
     if (!id || !repositories) return;
@@ -98,6 +133,13 @@ export default function SessionDetailScreen() {
     );
   }, [id, repositories, router]);
 
+  const handleMore = useCallback(() => {
+    Alert.alert('Session', '', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove session', style: 'destructive', onPress: handleRemoveSession },
+    ]);
+  }, [handleRemoveSession]);
+
   if (!isReady || loading) {
     return (
       <ThemedView style={styles.centered}>
@@ -114,72 +156,99 @@ export default function SessionDetailScreen() {
     );
   }
 
+  const weightUnit = user?.weightUnit ?? 'kg';
+  const dateLabel = formatDateShort(session.startedAt);
+  const durationLabel = formatDurationMins(session.startedAt, session.endedAt);
+
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.container, { paddingBottom: 40 + insets.bottom }]}
-    >
-      <ThemedView style={styles.card}>
-        <ThemedText type="defaultSemiBold">{categoryName}</ThemedText>
-        <ThemedText style={styles.detail}>{formatDate(session.startedAt)}</ThemedText>
-        <ThemedText style={styles.detail}>
-          Duration: {formatDuration(session.startedAt, session.endedAt)}
-        </ThemedText>
-        <ThemedText style={styles.detail}>
-          Total volume: {totalVolume.toLocaleString()} {user?.weightUnit ?? 'kg'}
-        </ThemedText>
-        {session.notes ? (
-          <ThemedText style={[styles.detail, styles.notes]}>{session.notes}</ThemedText>
-        ) : null}
-      </ThemedView>
-      <ThemedView style={styles.card}>
-        <ThemedText type="defaultSemiBold">Exercises</ThemedText>
-        {exercisesWithSets.map(({ name, sets }) => (
-          <ThemedView key={name} style={styles.exercise}>
-            <ThemedText>{name}</ThemedText>
-            {sets.map((set, i) => (
-              <ThemedText key={set.id} style={styles.setLine}>
-                Set {i + 1}: {set.reps} × {set.weight} {user?.weightUnit ?? 'kg'} ={' '}
-                {setVolume(set)} vol
-              </ThemedText>
-            ))}
-          </ThemedView>
-        ))}
-      </ThemedView>
-      <Pressable
-        style={({ pressed }) => [styles.removeButton, pressed && styles.removeButtonPressed]}
-        onPress={handleRemoveSession}
+    <View style={styles.screen}>
+      <SessionDetailHeader
+        title={categoryName}
+        dateLabel={dateLabel}
+        durationLabel={durationLabel}
+        onBack={handleBack}
+        onShare={() => {}}
+        onMore={handleMore}
+      />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: 32 + insets.bottom },
+        ]}
+        showsVerticalScrollIndicator={false}
       >
-        <ThemedText style={styles.removeButtonText}>Remove session</ThemedText>
-      </Pressable>
-    </ScrollView>
+        <View style={styles.main}>
+          <SessionStatsOverviewCard
+            totalVolume={totalVolume}
+            totalVolumeUnit={weightUnit}
+            totalSets={totalSets}
+          />
+          <View style={styles.exercisesList}>
+            {exercisesWithSets.map(({ name, sets, exerciseId }, index) => (
+              <ExerciseSetTableCard
+                key={`${exerciseId}-${name}`}
+                exerciseName={name}
+                sets={sets}
+                weightUnit={weightUnit}
+                prSetIndex={prSetIndexByExercise[index] ?? -1}
+                prOnWeight={true}
+                prBadgeVariant="trending_up"
+              />
+            ))}
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.removeButton,
+              pressed && styles.removeButtonPressed,
+            ]}
+            onPress={handleRemoveSession}
+          >
+            <ThemedText style={styles.removeButtonText}>Remove session</ThemedText>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
-  container: { padding: 20 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  card: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    backgroundColor: BrandColors.white,
+  screen: {
+    flex: 1,
+    backgroundColor: BrandColors.iosBg,
   },
-  detail: { marginTop: 4, color: BrandColors.slate },
-  notes: { fontStyle: 'italic' },
-  exercise: { marginTop: 12 },
-  setLine: { marginTop: 2, fontSize: 14, color: BrandColors.text },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  main: {
+    gap: 24,
+    paddingBottom: 24,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exercisesList: {
+    gap: 24,
+  },
   removeButton: {
-    marginTop: 24,
+    marginTop: 8,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: BrandColors.danger,
     alignItems: 'center',
   },
-  removeButtonPressed: { opacity: 0.9 },
-  removeButtonText: { color: BrandColors.danger, fontWeight: '600' },
+  removeButtonPressed: {
+    opacity: 0.9,
+  },
+  removeButtonText: {
+    color: BrandColors.danger,
+    fontWeight: '600',
+  },
 });

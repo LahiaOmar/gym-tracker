@@ -30,7 +30,7 @@ export default function RootLayout() {
                 <Stack.Screen name="select-category" options={{ headerShown: false }} />
                 <Stack.Screen name="sessions" options={{ title: 'Last Sessions' }} />
                 <Stack.Screen name="session-summary" options={{ title: 'Workout Summary' }} />
-                <Stack.Screen name="session/[id]" options={{ title: 'Session' }} />
+                <Stack.Screen name="session/[id]" options={{ headerShown: false, title: 'Session' }} />
                 <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
               </Stack>
               <StatusBar style="auto" />
