@@ -37,6 +37,14 @@ export default function ProfileTabScreen() {
   const systemTheme = colorScheme ?? 'light';
   const [appearanceSelection, setAppearanceSelection] = useState<'light' | 'dark'>(systemTheme);
   const savedAppearanceRef = useRef<'light' | 'dark'>(systemTheme);
+  const barBg = useThemeColor(
+    { light: BrandColors.white, dark: BrandColors.navy },
+    'card'
+  );
+  const barBorder = useThemeColor(
+    { light: BrandColors.border, dark: BrandColors.slate },
+    'border'
+  );
   const handleAppearanceChange = useCallback((v: 'light' | 'dark') => {
     setAppearanceSelection(v);
     Appearance.setColorScheme(v);
@@ -130,14 +138,6 @@ export default function ProfileTabScreen() {
   }
 
   const displayLabel = displayName.trim() || 'Guest';
-  const barBg = useThemeColor(
-    { light: BrandColors.white, dark: BrandColors.navy },
-    'card'
-  );
-  const barBorder = useThemeColor(
-    { light: BrandColors.border, dark: BrandColors.slate },
-    'border'
-  );
 
   return (
     <ThemedView style={styles.screen}>

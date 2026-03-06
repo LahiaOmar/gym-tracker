@@ -315,6 +315,8 @@ const styles = StyleSheet.create({
     backgroundColor: PERFORMANCE_BLUE,
     paddingHorizontal: 16,
     paddingBottom: 16,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

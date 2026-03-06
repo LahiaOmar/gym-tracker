@@ -1,12 +1,19 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Tabs } from 'expo-router';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-const TAB_BAR_BASE_HEIGHT = 88;
+import HomeScreen from './index';
+import SessionScreen from './session';
+import StatsScreen from './stats';
+import ProfileScreen from './profile';
+
+const Tab = createMaterialTopTabNavigator();
+
+const TAB_BAR_BASE_HEIGHT = 100;
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -19,9 +26,11 @@ export default function TabLayout() {
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + insets.bottom;
 
   return (
-    <Tabs
+    <Tab.Navigator
+      tabBarPosition="bottom"
       screenOptions={{
-        headerShown: false,
+        swipeEnabled: true,
+        animationEnabled: true,
         tabBarActiveTintColor: BrandColors.performanceAccent,
         tabBarInactiveTintColor: tabBarInactive,
         tabBarStyle: {
@@ -29,7 +38,7 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: tabBarBorder,
           paddingTop: 16,
-          paddingBottom: tabBarPaddingBottom,
+          paddingBottom: insets.bottom + 16,
           height: tabBarHeight,
         },
         tabBarLabelStyle: {
@@ -37,37 +46,55 @@ export default function TabLayout() {
           fontWeight: '700',
           textTransform: 'uppercase',
           letterSpacing: 0.5,
+          marginTop: 4,
         },
-      }}>
-      <Tabs.Screen
-        name="index"
+        tabBarIndicatorStyle: {
+          backgroundColor: BrandColors.performanceAccent,
+          height: 3,
+          borderRadius: 1.5,
+          position: 'absolute',
+          top: 0,
+        },
+        tabBarShowIcon: true,
+        tabBarShowLabel: true,
+        tabBarItemStyle: {
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
         options={{
-          title: 'Home',
           tabBarIcon: ({ color }) => <MaterialIcons name="home" size={26} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="session"
+      <Tab.Screen
+        name="History"
+        component={SessionScreen}
         options={{
-          title: 'History',
           tabBarIcon: ({ color }) => <MaterialIcons name="history" size={26} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="stats"
+      <Tab.Screen
+        name="Stats"
+        component={StatsScreen}
         options={{
-          title: 'Stats',
           tabBarIcon: ({ color }) => <MaterialIcons name="bar-chart" size={26} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="profile"
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
         options={{
-          title: 'Profile',
           tabBarIcon: ({ color }) => <MaterialIcons name="person" size={26} color={color} />,
         }}
       />
-      <Tabs.Screen name="explore" options={{ href: null }} />
-    </Tabs>
+    </Tab.Navigator>
   );
 }
