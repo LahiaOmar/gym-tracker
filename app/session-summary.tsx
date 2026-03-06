@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 0,
   },
   centered: {
     flex: 1,
@@ -264,6 +264,7 @@ const styles = StyleSheet.create({
     marginTop: -40,
     gap: 16,
     paddingBottom: 24,
+    paddingHorizontal: 24,
   },
   statRow: {
     flexDirection: 'row',

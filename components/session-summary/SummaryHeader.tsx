@@ -33,7 +33,6 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: BrandColors.performanceBlue,
     paddingBottom: 80,
-    paddingHorizontal: 24,
     alignItems: 'center',
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
