@@ -7,6 +7,7 @@ type Row = {
   id: string;
   user_id: string;
   name: string;
+  icon: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -16,6 +17,7 @@ function rowToCategory(r: Row): TrainingCategory {
     id: r.id,
     userId: r.user_id,
     name: r.name,
+    icon: r.icon,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -26,23 +28,29 @@ export function createTrainingCategoryRepository(db: SQLiteDatabase): IRepo {
     async create(entity) {
       const id = entity.id ?? generateId();
       const ts = now();
+      const icon = entity.icon ?? null;
       await db.runAsync(
-        'INSERT INTO training_category (id, user_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO training_category (id, user_id, name, icon, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
         id,
         entity.userId,
         entity.name,
+        icon,
         ts,
         ts
       );
-      return { ...entity, id, createdAt: ts, updatedAt: ts };
+      return { ...entity, id, icon, createdAt: ts, updatedAt: ts };
     },
     async update(id, patch) {
       const ts = now();
       const updates: string[] = ['updated_at = ?'];
-      const params: (string | number)[] = [ts];
+      const params: (string | number | null)[] = [ts];
       if (patch.name !== undefined) {
         updates.push('name = ?');
         params.push(patch.name);
+      }
+      if (patch.icon !== undefined) {
+        updates.push('icon = ?');
+        params.push(patch.icon ?? null);
       }
       params.push(id);
       await db.runAsync(`UPDATE training_category SET ${updates.join(', ')} WHERE id = ?`, params);

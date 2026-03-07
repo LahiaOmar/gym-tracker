@@ -7,6 +7,7 @@ import { useStorage } from '@/contexts/StorageContext';
 export type SessionItem = {
   session: WorkoutSession;
   categoryName: string;
+  categoryIcon: string | null;
   durationMins: number;
   volume: number;
 };
@@ -42,6 +43,7 @@ async function loadSessionItems(
     items.push({
       session,
       categoryName: category?.name ?? 'Workout',
+      categoryIcon: category?.icon ?? null,
       durationMins: getSessionDurationMins(session),
       volume,
     });

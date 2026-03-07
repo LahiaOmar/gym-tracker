@@ -28,7 +28,7 @@ export interface UserRepository {
 
 export interface TrainingCategoryRepository {
   create(entity: Omit<TrainingCategory, 'createdAt' | 'updatedAt'>): Promise<TrainingCategory>;
-  update(id: string, patch: Partial<Pick<TrainingCategory, 'name' | 'updatedAt'>>): Promise<TrainingCategory>;
+  update(id: string, patch: Partial<Pick<TrainingCategory, 'name' | 'icon' | 'updatedAt'>>): Promise<TrainingCategory>;
   delete(id: string): Promise<void>;
   getById(id: string): Promise<TrainingCategory | null>;
   list(options?: ListOptions<{ userId: string }>): Promise<TrainingCategory[]>;

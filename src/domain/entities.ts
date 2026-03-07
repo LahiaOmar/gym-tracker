@@ -19,6 +19,7 @@ export interface TrainingCategory extends Timestamped {
   id: string;
   userId: string;
   name: string;
+  icon?: string | null;
 }
 
 export interface Exercise extends Timestamped {

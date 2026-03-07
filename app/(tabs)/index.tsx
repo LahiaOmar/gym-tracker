@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +16,8 @@ import { BrandColors } from '@/constants/theme';
 import { useSessions } from '@/contexts/SessionsContext';
 import { useStorage } from '@/contexts/StorageContext';
 import { getSessionDurationMins, computeStreak } from '@/src/domain';
+
+type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
 const PERFORMANCE_BLUE = BrandColors.performanceBlue;
 const ACCENT = BrandColors.performanceAccent;
@@ -201,7 +204,11 @@ export default function HomeScreen() {
               >
                 <View style={styles.activityLeft}>
                   <View style={styles.activityIconWrap}>
-                    <MaterialIcons name="fitness-center" size={24} color={PERFORMANCE_BLUE} />
+                    <MaterialIcons
+                      name={(item.categoryIcon as MaterialIconName) || 'fitness-center'}
+                      size={24}
+                      color={PERFORMANCE_BLUE}
+                    />
                   </View>
                   <View style={styles.activityContent}>
                     <Text style={styles.activityName}>{item.categoryName}</Text>

@@ -10,6 +10,7 @@ import {
   CURRENT_SCHEMA_VERSION,
 } from './versioning';
 import { up as migration001 } from './migrations/001_initial';
+import { up as migration002 } from './migrations/002_category_icon';
 
 const DB_NAME = 'gym_tracker.db';
 
@@ -34,9 +35,13 @@ async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
   const version = existingVersion ? parseInt(existingVersion.value, 10) : 0;
 
   if (version < 1) {
-    // Already applied in execAsync above; just set meta
     await setMeta(db, STORAGE_ENGINE_KEY, CURRENT_STORAGE_ENGINE);
-    await setMeta(db, SCHEMA_VERSION_KEY, String(CURRENT_SCHEMA_VERSION));
+    await setMeta(db, SCHEMA_VERSION_KEY, '1');
+  }
+
+  if (version < 2) {
+    await db.execAsync(migration002);
+    await setMeta(db, SCHEMA_VERSION_KEY, '2');
   }
 }
 

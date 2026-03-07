@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,6 +28,46 @@ const IOS_BG = BrandColors.iosBg;
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
+const AVAILABLE_ICONS: MaterialIconName[] = [
+  'fitness-center',
+  'sports-gymnastics',
+  'directions-run',
+  'rowing',
+  'accessibility-new',
+  'self-improvement',
+  'sports-martial-arts',
+  'sports-kabaddi',
+  'sports-handball',
+  'sports-tennis',
+  'sports-soccer',
+  'sports-basketball',
+  'sports-volleyball',
+  'pool',
+  'pedal-bike',
+  'hiking',
+  'downhill-skiing',
+  'snowboarding',
+  'surfing',
+  'skateboarding',
+  'sports-golf',
+  'sports-baseball',
+  'sports-hockey',
+  'sports-rugby',
+  'sports-cricket',
+  'sports-mma',
+  'sports-motorsports',
+  'sports-esports',
+  'emoji-events',
+  'military-tech',
+  'timer',
+  'speed',
+  'bolt',
+  'whatshot',
+  'local-fire-department',
+  'favorite',
+  'star',
+];
+
 /** Default categories shown in the design with icon and example exercises. */
 const DEFAULT_CATEGORY_DEFS: Array<{
   name: string;
@@ -43,7 +84,7 @@ const DEFAULT_CATEGORY_DEFS: Array<{
 
 type CategoryItem =
   | { type: 'default'; name: string; icon: MaterialIconName; subtitle: string; categoryId: string | null }
-  | { type: 'custom'; name: string; categoryId: string };
+  | { type: 'custom'; name: string; icon: MaterialIconName; categoryId: string };
 
 function getCategoryDisplayList(
   defaults: typeof DEFAULT_CATEGORY_DEFS,
@@ -63,7 +104,12 @@ function getCategoryDisplayList(
   }
   for (const c of dbCategories) {
     if (!defaults.some((d) => d.name === c.name)) {
-      result.push({ type: 'custom', name: c.name, categoryId: c.id });
+      result.push({
+        type: 'custom',
+        name: c.name,
+        icon: (c.icon as MaterialIconName) || 'fitness-center',
+        categoryId: c.id,
+      });
     }
   }
   return result;
@@ -71,6 +117,7 @@ function getCategoryDisplayList(
 
 export default function SelectCategoryScreen() {
   const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { setActiveSessionId } = useActiveSession();
   const { user, repositories, isReady } = useStorage();
@@ -80,6 +127,7 @@ export default function SelectCategoryScreen() {
   const [creating, setCreating] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState<MaterialIconName>('fitness-center');
 
   const load = useCallback(async () => {
     if (!repositories || !user) return;
@@ -133,13 +181,31 @@ export default function SelectCategoryScreen() {
           endedAt: null,
         });
         setActiveSessionId(session.id);
-        router.replace('/(tabs)/session');
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              {
+                name: '(tabs)',
+                state: {
+                  index: 1,
+                  routes: [
+                    { name: 'Home' },
+                    { name: 'History' },
+                    { name: 'Stats' },
+                    { name: 'Profile' },
+                  ],
+                },
+              },
+            ],
+          })
+        );
       } catch (e) {
         console.error(e);
         Alert.alert('Error', 'Could not start workout');
       }
     },
-    [repositories, user, setActiveSessionId, router]
+    [repositories, user, setActiveSessionId, navigation]
   );
 
   const handleCreateCategory = useCallback(async () => {
@@ -151,9 +217,11 @@ export default function SelectCategoryScreen() {
         id: generateId(),
         userId: user.id,
         name,
+        icon: selectedIcon,
       });
       setCategories((prev) => [...prev, cat]);
       setNewName('');
+      setSelectedIcon('fitness-center');
       setCreateModalVisible(false);
     } catch (e) {
       console.error(e);
@@ -161,7 +229,7 @@ export default function SelectCategoryScreen() {
     } finally {
       setCreating(false);
     }
-  }, [newName, repositories, user]);
+  }, [newName, repositories, user, selectedIcon]);
 
   const handleCancel = useCallback(() => {
     router.back();
@@ -232,7 +300,7 @@ export default function SelectCategoryScreen() {
                 <View style={styles.cardInner}>
                   <View style={styles.iconBox}>
                     <MaterialIcons
-                      name={item.type === 'default' ? item.icon : 'fitness-center'}
+                      name={item.icon}
                       size={28}
                       color={PERFORMANCE_BLUE}
                     />
@@ -261,11 +329,11 @@ export default function SelectCategoryScreen() {
         </>
       )}
 
-      {/* Create category modal (simplified: Alert for now to match MVP) */}
+      {/* Create category modal */}
       {createModalVisible && (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setCreateModalVisible(false)} />
-          <View style={[styles.modalCard, { marginTop: 120 + topPad }]}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setCreateModalVisible(false)} />
+          <View style={[styles.modalCard, { marginTop: 80 + topPad }]}>
             <Text style={styles.modalTitle}>Create Custom Category</Text>
             <TextInput
               style={styles.modalInput}
@@ -276,10 +344,48 @@ export default function SelectCategoryScreen() {
               editable={!creating}
               autoFocus
             />
+
+            <Text style={styles.iconSelectorLabel}>Select Icon</Text>
+            <View style={styles.selectedIconPreview}>
+              <View style={styles.selectedIconBox}>
+                <MaterialIcons name={selectedIcon} size={32} color={PERFORMANCE_BLUE} />
+              </View>
+              <Text style={styles.selectedIconName}>{selectedIcon}</Text>
+            </View>
+
+            <FlatList
+              data={AVAILABLE_ICONS}
+              keyExtractor={(item) => item}
+              numColumns={5}
+              style={styles.iconGrid}
+              contentContainerStyle={styles.iconGridContent}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item: iconName }) => (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.iconOption,
+                    selectedIcon === iconName && styles.iconOptionSelected,
+                    pressed && styles.iconOptionPressed,
+                  ]}
+                  onPress={() => setSelectedIcon(iconName)}
+                >
+                  <MaterialIcons
+                    name={iconName}
+                    size={24}
+                    color={selectedIcon === iconName ? '#fff' : PERFORMANCE_BLUE}
+                  />
+                </Pressable>
+              )}
+            />
+
             <View style={styles.modalActions}>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, pressed && styles.modalBtnPressed]}
-                onPress={() => setCreateModalVisible(false)}
+                onPress={() => {
+                  setCreateModalVisible(false);
+                  setNewName('');
+                  setSelectedIcon('fitness-center');
+                }}
               >
                 <Text style={styles.modalBtnLabel}>Cancel</Text>
               </Pressable>
@@ -431,6 +537,10 @@ const styles = StyleSheet.create({
   fabPressed: {
     transform: [{ scale: 0.9 }],
   },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
   modalCard: {
     marginHorizontal: 24,
     backgroundColor: '#fff',
@@ -441,6 +551,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
+    maxHeight: '70%',
   },
   modalTitle: {
     fontSize: 18,
@@ -457,6 +568,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: BrandColors.text,
     marginBottom: 16,
+  },
+  iconSelectorLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  selectedIconPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  selectedIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10, 29, 55, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedIconName: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  iconGrid: {
+    maxHeight: 180,
+    marginBottom: 16,
+  },
+  iconGridContent: {
+    gap: 8,
+  },
+  iconOption: {
+    flex: 1,
+    aspectRatio: 1,
+    maxWidth: '18%',
+    margin: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(10, 29, 55, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconOptionSelected: {
+    backgroundColor: PERFORMANCE_BLUE,
+  },
+  iconOptionPressed: {
+    opacity: 0.7,
   },
   modalActions: {
     flexDirection: 'row',

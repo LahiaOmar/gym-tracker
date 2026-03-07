@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,6 +18,8 @@ import { BrandColors } from '@/constants/theme';
 import { useSessions } from '@/contexts/SessionsContext';
 import type { SessionItem } from '@/contexts/SessionsContext';
 import { useStorage } from '@/contexts/StorageContext';
+
+type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
 const PERFORMANCE_BLUE = BrandColors.performanceBlue;
 const IOS_BG = BrandColors.iosBg;
@@ -182,7 +185,11 @@ export function SessionsList() {
                 >
                   <View style={styles.cardLeft}>
                     <View style={styles.iconWrap}>
-                      <MaterialIcons name="fitness-center" size={24} color={PERFORMANCE_BLUE} />
+                      <MaterialIcons
+                        name={(item.categoryIcon as MaterialIconName) || 'fitness-center'}
+                        size={24}
+                        color={PERFORMANCE_BLUE}
+                      />
                     </View>
                     <View style={styles.cardContent}>
                       <Text style={styles.cardName}>{item.categoryName}</Text>
