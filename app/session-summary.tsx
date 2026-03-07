@@ -67,7 +67,7 @@ export default function SessionSummaryScreen() {
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [categoryName, setCategoryName] = useState('');
   const [exercisesWithSets, setExercisesWithSets] = useState<
-    { name: string; sets: WorkoutSet[]; imageUri?: string | null }[]
+    { id: string; name: string; sets: WorkoutSet[]; imageUri?: string | null }[]
   >([]);
   const [totalVolume, setTotalVolume] = useState(0);
   const [totalSets, setTotalSets] = useState(0);
@@ -90,7 +90,7 @@ export default function SessionSummaryScreen() {
     const weList = await repositories.workoutExercise.list({
       filter: { sessionId: s.id },
     });
-    const list: { name: string; sets: WorkoutSet[]; imageUri?: string | null }[] = [];
+    const list: { id: string; name: string; sets: WorkoutSet[]; imageUri?: string | null }[] = [];
     let vol = 0;
     let setCount = 0;
     const exerciseIds: string[] = [];
@@ -100,6 +100,7 @@ export default function SessionSummaryScreen() {
         filter: { workoutExerciseId: we.id },
       });
       list.push({
+        id: we.id,
         name: ex?.name ?? '?',
         sets,
         imageUri: null,
@@ -205,9 +206,9 @@ export default function SessionSummaryScreen() {
               EXERCISE HIGHLIGHTS
             </ThemedText>
             <View style={styles.highlightsList}>
-              {exercisesWithSets.map(({ name, sets, imageUri }) => (
+              {exercisesWithSets.map(({ id, name, sets, imageUri }) => (
                 <ExerciseHighlightCard
-                  key={name}
+                  key={id}
                   title={name}
                   bestSet={getBestSetLabel(sets, weightUnit)}
                   imageUri={imageUri}

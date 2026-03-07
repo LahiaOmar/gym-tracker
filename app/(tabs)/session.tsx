@@ -1,3 +1,4 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -45,7 +46,9 @@ export default function SessionTabScreen() {
   const [addExerciseModalVisible, setAddExerciseModalVisible] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseList, setExerciseList] = useState<Exercise[]>([]);
-  const [showOptionalDetails, setShowOptionalDetails] = useState(false);
+  const [editingExerciseDetails, setEditingExerciseDetails] = useState<ExerciseWithName | null>(null);
+  const [createExerciseModalVisible, setCreateExerciseModalVisible] = useState(false);
+  const [newExerciseName, setNewExerciseName] = useState('');
   const [optMachine, setOptMachine] = useState('');
   const [optSeatHeight, setOptSeatHeight] = useState('');
   const [optBenchAngle, setOptBenchAngle] = useState('');
@@ -170,25 +173,48 @@ export default function SessionTabScreen() {
         sessionId: activeSessionId,
         exerciseId,
         order,
-        machineName: optMachine.trim() || undefined,
-        seatHeight: optSeatHeight.trim() || undefined,
-        benchAngleDeg: optBenchAngle.trim() ? parseInt(optBenchAngle, 10) : undefined,
-        grip: optGrip.trim() || undefined,
       });
       setAddExerciseModalVisible(false);
       setExerciseSearch('');
-      setShowOptionalDetails(false);
-      setOptMachine('');
-      setOptSeatHeight('');
-      setOptBenchAngle('');
-      setOptGrip('');
       await loadSession();
     },
-    [repositories, activeSessionId, exercises.length, optMachine, optSeatHeight, optBenchAngle, optGrip, loadSession]
+    [repositories, activeSessionId, exercises.length, loadSession]
   );
 
+  const handleOpenExerciseDetails = useCallback((we: ExerciseWithName) => {
+    setEditingExerciseDetails(we);
+    setOptMachine(we.machineName ?? '');
+    setOptSeatHeight(we.seatHeight ?? '');
+    setOptBenchAngle(we.benchAngleDeg != null ? String(we.benchAngleDeg) : '');
+    setOptGrip(we.grip ?? '');
+  }, []);
+
+  const handleSaveExerciseDetails = useCallback(async () => {
+    if (!repositories || !editingExerciseDetails) return;
+    await repositories.workoutExercise.update(editingExerciseDetails.id, {
+      machineName: optMachine.trim() || null,
+      seatHeight: optSeatHeight.trim() || null,
+      benchAngleDeg: optBenchAngle.trim() ? parseInt(optBenchAngle, 10) : null,
+      grip: optGrip.trim() || null,
+    });
+    setEditingExerciseDetails(null);
+    setOptMachine('');
+    setOptSeatHeight('');
+    setOptBenchAngle('');
+    setOptGrip('');
+    await loadSession();
+  }, [repositories, editingExerciseDetails, optMachine, optSeatHeight, optBenchAngle, optGrip, loadSession]);
+
+  const handleCancelExerciseDetails = useCallback(() => {
+    setEditingExerciseDetails(null);
+    setOptMachine('');
+    setOptSeatHeight('');
+    setOptBenchAngle('');
+    setOptGrip('');
+  }, []);
+
   const handleCreateCustomExercise = useCallback(async () => {
-    const name = exerciseSearch.trim();
+    const name = newExerciseName.trim();
     if (!name || !repositories || !user) return;
     const ex = await repositories.exercise.create({
       id: generateId(),
@@ -196,8 +222,10 @@ export default function SessionTabScreen() {
       name,
       isBuiltIn: false,
     });
-    await handleSelectExercise(ex.id);
-  }, [exerciseSearch, repositories, user, handleSelectExercise]);
+    setCreateExerciseModalVisible(false);
+    setNewExerciseName('');
+    await loadExercises();
+  }, [newExerciseName, repositories, user, loadExercises]);
 
   const timerParts = useMemo(() => formatElapsedToParts(elapsed), [elapsed]);
 
@@ -252,14 +280,22 @@ export default function SessionTabScreen() {
         {exercises.map((we, exerciseIndex) => {
           const sets = setsRowDataByWeId[we.id] ?? [];
           const hasSets = sets.length > 0;
+          const hasDetails = !!(we.machineName || we.seatHeight || we.benchAngleDeg || we.grip);
+          const detailParts: string[] = [];
+          if (we.machineName) detailParts.push(we.machineName);
+          if (we.seatHeight) detailParts.push(`Seat: ${we.seatHeight}`);
+          if (we.benchAngleDeg) detailParts.push(`${we.benchAngleDeg}°`);
+          if (we.grip) detailParts.push(we.grip);
+          const subtitle = hasDetails ? detailParts.join(' • ') : undefined;
           return (
             <View key={we.id} style={styles.exerciseCardWrap}>
               <ExerciseCard
                 title={we.exerciseName}
-                subtitle={undefined}
+                subtitle={subtitle}
                 imageUri={undefined}
                 sets={sets}
                 onAddSet={() => handleAddSet(we.id)}
+                onMorePress={() => handleOpenExerciseDetails(we)}
                 onWeightChange={(setId, value) => handleUpdateSet(setId, { weight: value })}
                 onRepsChange={(setId, value) => handleUpdateSet(setId, { reps: value })}
                 hasSets={hasSets}
@@ -311,27 +347,14 @@ export default function SessionTabScreen() {
             value={exerciseSearch}
             onChangeText={setExerciseSearch}
           />
-          <Pressable style={styles.optionalToggle} onPress={() => setShowOptionalDetails((v) => !v)}>
-            <ThemedText style={styles.optionalToggleText}>
-              {showOptionalDetails ? '−' : '+'} Optional details
-            </ThemedText>
+          <Pressable 
+            style={({ pressed }) => [styles.addExerciseButton, pressed && styles.addExerciseButtonPressed]} 
+            onPress={() => setCreateExerciseModalVisible(true)}
+          >
+            <MaterialIcons name="add" size={20} color="#fff" />
+            <ThemedText style={styles.addExerciseButtonText}>Add New Exercise</ThemedText>
           </Pressable>
-          {showOptionalDetails && (
-            <ThemedView style={styles.optionalFields}>
-              <TextInput style={styles.optionalInput} placeholder="Machine name" placeholderTextColor="#687076" value={optMachine} onChangeText={setOptMachine} />
-              <TextInput style={styles.optionalInput} placeholder="Seat height" placeholderTextColor="#687076" value={optSeatHeight} onChangeText={setOptSeatHeight} />
-              <TextInput style={styles.optionalInput} placeholder="Bench angle (deg)" placeholderTextColor="#687076" value={optBenchAngle} onChangeText={setOptBenchAngle} keyboardType="number-pad" />
-              <TextInput style={styles.optionalInput} placeholder="Grip" placeholderTextColor="#687076" value={optGrip} onChangeText={setOptGrip} />
-            </ThemedView>
-          )}
           <ScrollView>
-            {exerciseSearch.trim() && (
-              <Pressable style={styles.row} onPress={handleCreateCustomExercise}>
-                <ThemedText style={styles.createCustomText}>
-                  Create &quot;{exerciseSearch.trim()}&quot;
-                </ThemedText>
-              </Pressable>
-            )}
             {exerciseList.map((ex) => (
               <Pressable
                 key={ex.id}
@@ -343,6 +366,89 @@ export default function SessionTabScreen() {
             ))}
           </ScrollView>
         </ThemedView>
+      </Modal>
+
+      <Modal visible={!!editingExerciseDetails} transparent animationType="fade">
+        <Pressable style={styles.modalOverlay} onPress={handleCancelExerciseDetails}>
+          <Pressable style={styles.exerciseDetailsModal} onPress={(e) => e.stopPropagation()}>
+            <ThemedText type="subtitle" style={styles.exerciseDetailsTitle}>
+              {editingExerciseDetails?.exerciseName}
+            </ThemedText>
+            <ThemedText style={styles.exerciseDetailsSubtitle}>Optional Details</ThemedText>
+            <View style={styles.detailsFields}>
+              <TextInput
+                style={styles.detailInput}
+                placeholder="Machine name"
+                placeholderTextColor="#687076"
+                value={optMachine}
+                onChangeText={setOptMachine}
+              />
+              <TextInput
+                style={styles.detailInput}
+                placeholder="Seat height"
+                placeholderTextColor="#687076"
+                value={optSeatHeight}
+                onChangeText={setOptSeatHeight}
+              />
+              <TextInput
+                style={styles.detailInput}
+                placeholder="Bench angle (deg)"
+                placeholderTextColor="#687076"
+                value={optBenchAngle}
+                onChangeText={setOptBenchAngle}
+                keyboardType="number-pad"
+              />
+              <TextInput
+                style={styles.detailInput}
+                placeholder="Grip (e.g., wide, narrow, neutral)"
+                placeholderTextColor="#687076"
+                value={optGrip}
+                onChangeText={setOptGrip}
+              />
+            </View>
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalCancel} onPress={handleCancelExerciseDetails}>
+                <ThemedText>Cancel</ThemedText>
+              </Pressable>
+              <Pressable style={styles.modalSave} onPress={handleSaveExerciseDetails}>
+                <ThemedText style={styles.modalSaveText}>Save</ThemedText>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={createExerciseModalVisible} transparent animationType="fade">
+        <Pressable style={styles.modalOverlay} onPress={() => setCreateExerciseModalVisible(false)}>
+          <Pressable style={styles.createExerciseModal} onPress={(e) => e.stopPropagation()}>
+            <ThemedText type="subtitle" style={styles.createExerciseTitle}>
+              Add New Exercise
+            </ThemedText>
+            <TextInput
+              style={styles.createExerciseInput}
+              placeholder="Exercise name"
+              placeholderTextColor="#687076"
+              value={newExerciseName}
+              onChangeText={setNewExerciseName}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalCancel} onPress={() => {
+                setCreateExerciseModalVisible(false);
+                setNewExerciseName('');
+              }}>
+                <ThemedText>Cancel</ThemedText>
+              </Pressable>
+              <Pressable 
+                style={[styles.modalSave, !newExerciseName.trim() && styles.modalSaveDisabled]} 
+                onPress={handleCreateCustomExercise}
+                disabled={!newExerciseName.trim()}
+              >
+                <ThemedText style={styles.modalSaveText}>Add</ThemedText>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -396,17 +502,83 @@ const styles = StyleSheet.create({
     color: BrandColors.text,
   },
   row: { padding: 16, borderBottomWidth: 1, borderBottomColor: BrandColors.border },
-  createCustomText: { color: BrandColors.action, fontWeight: '600' },
-  optionalToggle: { padding: 12, marginBottom: 8 },
-  optionalToggleText: { color: BrandColors.action },
-  optionalFields: { marginBottom: 16, gap: 8 },
-  optionalInput: {
+  addExerciseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: BrandColors.performanceAccent,
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  addExerciseButtonPressed: {
+    opacity: 0.9,
+  },
+  addExerciseButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  createExerciseModal: {
+    backgroundColor: BrandColors.white,
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  createExerciseTitle: {
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  createExerciseInput: {
     borderWidth: 1,
     borderColor: BrandColors.border,
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
+    padding: 12,
     fontSize: 16,
     color: BrandColors.text,
+    marginBottom: 20,
+  },
+  modalSaveDisabled: {
+    opacity: 0.5,
+  },
+  exerciseDetailsModal: {
+    backgroundColor: BrandColors.white,
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  exerciseDetailsTitle: {
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  exerciseDetailsSubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  detailsFields: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  detailInput: {
+    borderWidth: 1,
+    borderColor: BrandColors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: BrandColors.text,
+    backgroundColor: '#F8FAFC',
   },
 });

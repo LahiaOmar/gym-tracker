@@ -68,53 +68,6 @@ const AVAILABLE_ICONS: MaterialIconName[] = [
   'star',
 ];
 
-/** Default categories shown in the design with icon and example exercises. */
-const DEFAULT_CATEGORY_DEFS: Array<{
-  name: string;
-  icon: MaterialIconName;
-  subtitle: string;
-}> = [
-  { name: 'Chest', icon: 'fitness-center', subtitle: 'Bench Press, Flys, Push-ups' },
-  { name: 'Back', icon: 'rowing', subtitle: 'Deadlifts, Rows, Pull-ups' },
-  { name: 'Legs', icon: 'directions-run', subtitle: 'Squats, Lunges, Leg Press' },
-  { name: 'Shoulders', icon: 'accessibility-new', subtitle: 'Overhead Press, Lateral Raises' },
-  { name: 'Arms', icon: 'sports-gymnastics', subtitle: 'Bicep Curls, Skullcrushers' },
-  { name: 'Core', icon: 'self-improvement', subtitle: 'Planks, Crunches, Leg Raises' },
-];
-
-type CategoryItem =
-  | { type: 'default'; name: string; icon: MaterialIconName; subtitle: string; categoryId: string | null }
-  | { type: 'custom'; name: string; icon: MaterialIconName; categoryId: string };
-
-function getCategoryDisplayList(
-  defaults: typeof DEFAULT_CATEGORY_DEFS,
-  dbCategories: TrainingCategory[]
-): CategoryItem[] {
-  const byName = new Map(dbCategories.map((c) => [c.name, c]));
-  const result: CategoryItem[] = [];
-  for (const d of defaults) {
-    const existing = byName.get(d.name);
-    result.push({
-      type: 'default',
-      name: d.name,
-      icon: d.icon,
-      subtitle: d.subtitle,
-      categoryId: existing?.id ?? null,
-    });
-  }
-  for (const c of dbCategories) {
-    if (!defaults.some((d) => d.name === c.name)) {
-      result.push({
-        type: 'custom',
-        name: c.name,
-        icon: (c.icon as MaterialIconName) || 'fitness-center',
-        categoryId: c.id,
-      });
-    }
-  }
-  return result;
-}
-
 export default function SelectCategoryScreen() {
   const router = useRouter();
   const navigation = useNavigation<any>();
@@ -142,41 +95,19 @@ export default function SelectCategoryScreen() {
     }
   }, [isReady, user?.id, repositories, load]);
 
-  const displayList = useMemo(
-    () => getCategoryDisplayList(DEFAULT_CATEGORY_DEFS, categories),
-    [categories]
-  );
-
   const filteredList = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return displayList;
-    return displayList.filter((item) => item.name.toLowerCase().includes(q));
-  }, [displayList, search]);
+    if (!q) return categories;
+    return categories.filter((cat) => cat.name.toLowerCase().includes(q));
+  }, [categories, search]);
 
   const handleSelect = useCallback(
-    async (item: CategoryItem) => {
+    async (category: TrainingCategory) => {
       if (!repositories || !user) return;
-      let categoryId = item.categoryId;
-      if (item.type === 'default' && !categoryId) {
-        try {
-          const created = await repositories.trainingCategory.create({
-            id: generateId(),
-            userId: user.id,
-            name: item.name,
-          });
-          categoryId = created.id;
-          setCategories((prev) => [...prev, created]);
-        } catch (e) {
-          console.error(e);
-          Alert.alert('Error', 'Could not create category');
-          return;
-        }
-      }
-      if (!categoryId) return;
       try {
         const session = await repositories.workoutSession.create({
           userId: user.id,
-          categoryId,
+          categoryId: category.id,
           startedAt: new Date().toISOString(),
           endedAt: null,
         });
@@ -235,6 +166,34 @@ export default function SelectCategoryScreen() {
     router.back();
   }, [router]);
 
+  const handleDeleteCategory = useCallback(
+    async (category: TrainingCategory) => {
+      if (!repositories) return;
+      
+      Alert.alert(
+        'Delete Workout',
+        `Are you sure you want to delete "${category.name}"? This will not delete your workout history.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await repositories.trainingCategory.delete(category.id);
+                setCategories((prev) => prev.filter((c) => c.id !== category.id));
+              } catch (e) {
+                console.error(e);
+                Alert.alert('Error', 'Could not delete category');
+              }
+            },
+          },
+        ]
+      );
+    },
+    [repositories]
+  );
+
   if (!isReady) {
     return (
       <View style={[styles.centered, styles.screen]}>
@@ -258,7 +217,7 @@ export default function SelectCategoryScreen() {
             <MaterialIcons name="arrow-back-ios" size={20} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Select Category</Text>
+            <Text style={styles.headerTitle}>Select Workout</Text>
           </View>
           <Pressable
             onPress={handleCancel}
@@ -287,7 +246,7 @@ export default function SelectCategoryScreen() {
         <>
           <FlatList
             data={filteredList}
-            keyExtractor={(item) => item.type === 'default' ? `default-${item.name}` : `custom-${item.categoryId}`}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
             renderItem={({ item }) => (
               <Pressable
@@ -300,19 +259,28 @@ export default function SelectCategoryScreen() {
                 <View style={styles.cardInner}>
                   <View style={styles.iconBox}>
                     <MaterialIcons
-                      name={item.icon}
+                      name={(item.icon as MaterialIconName) || 'fitness-center'}
                       size={28}
                       color={PERFORMANCE_BLUE}
                     />
                   </View>
                   <View style={styles.cardText}>
                     <Text style={styles.cardTitle}>{item.name}</Text>
-                    {item.type === 'default' ? (
-                      <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-                    ) : null}
                   </View>
                 </View>
-                <MaterialIcons name="chevron-right" size={24} color="#CBD5E1" />
+                <View style={styles.cardActions}>
+                  <Pressable
+                    style={({ pressed }) => [styles.deleteBtn, pressed && styles.deleteBtnPressed]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteCategory(item);
+                    }}
+                    hitSlop={8}
+                  >
+                    <MaterialIcons name="delete-outline" size={22} color="#94A3B8" />
+                  </Pressable>
+                  <MaterialIcons name="chevron-right" size={24} color="#CBD5E1" />
+                </View>
               </Pressable>
             )}
           />
@@ -511,11 +479,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: PERFORMANCE_BLUE,
   },
-  cardSubtitle: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '500',
-    marginTop: 2,
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  deleteBtn: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  deleteBtnPressed: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   fabWrap: {
     position: 'absolute',

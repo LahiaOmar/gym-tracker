@@ -28,7 +28,11 @@ const BUILT_IN_EXERCISES = [
   'Dips',
 ];
 
-const DEFAULT_CATEGORIES = ['Push', 'Pull', 'Legs'];
+const DEFAULT_CATEGORIES: Array<{ name: string; icon: string }> = [
+  { name: 'Push Day', icon: 'fitness-center' },
+  { name: 'Pull Day', icon: 'rowing' },
+  { name: 'Leg Day', icon: 'directions-run' },
+];
 
 export async function seedBuiltInExercises(repos: SqliteRepositories): Promise<void> {
   const existing = await repos.exercise.list({ filter: { isBuiltIn: true }, limit: 1 });
@@ -48,11 +52,12 @@ export async function seedDefaultCategories(repos: SqliteRepositories, userId: s
   const existing = await repos.trainingCategory.list({ filter: { userId }, limit: 1 });
   if (existing.length > 0) return;
 
-  for (const name of DEFAULT_CATEGORIES) {
+  for (const cat of DEFAULT_CATEGORIES) {
     await repos.trainingCategory.create({
       id: generateId(),
       userId,
-      name,
+      name: cat.name,
+      icon: cat.icon,
     });
   }
 }
