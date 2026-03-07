@@ -47,6 +47,7 @@ export interface WorkoutExercise {
   seatHeight?: string | null;
   benchAngleDeg?: number | null;
   grip?: string | null;
+  notes?: string | null;
 }
 
 export interface WorkoutSet extends Timestamped {

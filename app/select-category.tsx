@@ -268,19 +268,16 @@ export default function SelectCategoryScreen() {
                     <Text style={styles.cardTitle}>{item.name}</Text>
                   </View>
                 </View>
-                <View style={styles.cardActions}>
-                  <Pressable
-                    style={({ pressed }) => [styles.deleteBtn, pressed && styles.deleteBtnPressed]}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCategory(item);
-                    }}
-                    hitSlop={8}
-                  >
-                    <MaterialIcons name="delete-outline" size={22} color="#94A3B8" />
-                  </Pressable>
-                  <MaterialIcons name="chevron-right" size={24} color="#CBD5E1" />
-                </View>
+                <Pressable
+                  style={({ pressed }) => [styles.deleteBtn, pressed && styles.deleteBtnPressed]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeleteCategory(item);
+                  }}
+                  hitSlop={8}
+                >
+                  <MaterialIcons name="delete-outline" size={22} color="#94A3B8" />
+                </Pressable>
               </Pressable>
             )}
           />
@@ -478,11 +475,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: PERFORMANCE_BLUE,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
   deleteBtn: {
     padding: 8,

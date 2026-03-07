@@ -12,6 +12,7 @@ type Row = {
   seat_height: string | null;
   bench_angle_deg: number | null;
   grip: string | null;
+  notes: string | null;
 };
 
 function rowToWorkoutExercise(r: Row): WorkoutExercise {
@@ -24,6 +25,7 @@ function rowToWorkoutExercise(r: Row): WorkoutExercise {
     seatHeight: r.seat_height,
     benchAngleDeg: r.bench_angle_deg,
     grip: r.grip,
+    notes: r.notes,
   };
 }
 
@@ -32,8 +34,8 @@ export function createWorkoutExerciseRepository(db: SQLiteDatabase): IRepo {
     async create(entity) {
       const id = generateId();
       await db.runAsync(
-        `INSERT INTO workout_exercise (id, session_id, exercise_id, "order", machine_name, seat_height, bench_angle_deg, grip)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO workout_exercise (id, session_id, exercise_id, "order", machine_name, seat_height, bench_angle_deg, grip, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         id,
         entity.sessionId,
         entity.exerciseId,
@@ -41,7 +43,8 @@ export function createWorkoutExerciseRepository(db: SQLiteDatabase): IRepo {
         entity.machineName ?? null,
         entity.seatHeight ?? null,
         entity.benchAngleDeg ?? null,
-        entity.grip ?? null
+        entity.grip ?? null,
+        entity.notes ?? null
       );
       return rowToWorkoutExercise({
         id,
@@ -52,6 +55,7 @@ export function createWorkoutExerciseRepository(db: SQLiteDatabase): IRepo {
         seat_height: entity.seatHeight ?? null,
         bench_angle_deg: entity.benchAngleDeg ?? null,
         grip: entity.grip ?? null,
+        notes: entity.notes ?? null,
       });
     },
     async update(id, patch) {
@@ -80,6 +84,10 @@ export function createWorkoutExerciseRepository(db: SQLiteDatabase): IRepo {
       if (patch.grip !== undefined) {
         updates.push('grip = ?');
         params.push(patch.grip);
+      }
+      if (patch.notes !== undefined) {
+        updates.push('notes = ?');
+        params.push(patch.notes);
       }
       if (updates.length === 0) {
         const ex = await this.getById(id);

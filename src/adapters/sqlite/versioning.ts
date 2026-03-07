@@ -7,7 +7,7 @@ export const STORAGE_ENGINE_KEY = 'storageEngine';
 export const SCHEMA_VERSION_KEY = 'schemaVersion';
 
 export const CURRENT_STORAGE_ENGINE = 'sqlite';
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export interface StorageMeta {
   storageEngine: string;

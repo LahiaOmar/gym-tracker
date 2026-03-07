@@ -16,6 +16,7 @@ export interface SetRowData {
 interface ExerciseCardProps {
   title: string;
   subtitle?: string;
+  notes?: string;
   imageUri?: string | null;
   sets: SetRowData[];
   onMorePress?: () => void;
@@ -34,6 +35,7 @@ interface ExerciseCardProps {
 export function ExerciseCard({
   title,
   subtitle,
+  notes,
   imageUri,
   sets,
   onMorePress,
@@ -76,6 +78,13 @@ export function ExerciseCard({
           <MaterialIcons name="more-vert" size={24} color="#94A3B8" />
         </Pressable>
       </View>
+
+      {notes ? (
+        <View style={styles.notesContainer}>
+          <MaterialIcons name="notes" size={14} color="#94A3B8" />
+          <Text style={styles.notesText}>{notes}</Text>
+        </View>
+      ) : null}
 
       {isEmpty ? (
         <View style={styles.emptyWrap}>
@@ -368,5 +377,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: ACCENT,
+  },
+  notesContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFF8F3',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+  },
+  notesText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#64748B',
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
 });

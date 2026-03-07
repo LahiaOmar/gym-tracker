@@ -3,11 +3,13 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,6 +55,7 @@ export default function SessionTabScreen() {
   const [optSeatHeight, setOptSeatHeight] = useState('');
   const [optBenchAngle, setOptBenchAngle] = useState('');
   const [optGrip, setOptGrip] = useState('');
+  const [optNotes, setOptNotes] = useState('');
 
   const loadSession = useCallback(async () => {
     if (!activeSessionId || !repositories || !user) return;
@@ -187,6 +190,7 @@ export default function SessionTabScreen() {
     setOptSeatHeight(we.seatHeight ?? '');
     setOptBenchAngle(we.benchAngleDeg != null ? String(we.benchAngleDeg) : '');
     setOptGrip(we.grip ?? '');
+    setOptNotes(we.notes ?? '');
   }, []);
 
   const handleSaveExerciseDetails = useCallback(async () => {
@@ -196,14 +200,16 @@ export default function SessionTabScreen() {
       seatHeight: optSeatHeight.trim() || null,
       benchAngleDeg: optBenchAngle.trim() ? parseInt(optBenchAngle, 10) : null,
       grip: optGrip.trim() || null,
+      notes: optNotes.trim() || null,
     });
     setEditingExerciseDetails(null);
     setOptMachine('');
     setOptSeatHeight('');
     setOptBenchAngle('');
     setOptGrip('');
+    setOptNotes('');
     await loadSession();
-  }, [repositories, editingExerciseDetails, optMachine, optSeatHeight, optBenchAngle, optGrip, loadSession]);
+  }, [repositories, editingExerciseDetails, optMachine, optSeatHeight, optBenchAngle, optGrip, optNotes, loadSession]);
 
   const handleCancelExerciseDetails = useCallback(() => {
     setEditingExerciseDetails(null);
@@ -211,6 +217,7 @@ export default function SessionTabScreen() {
     setOptSeatHeight('');
     setOptBenchAngle('');
     setOptGrip('');
+    setOptNotes('');
   }, []);
 
   const handleCreateCustomExercise = useCallback(async () => {
@@ -280,18 +287,20 @@ export default function SessionTabScreen() {
         {exercises.map((we, exerciseIndex) => {
           const sets = setsRowDataByWeId[we.id] ?? [];
           const hasSets = sets.length > 0;
-          const hasDetails = !!(we.machineName || we.seatHeight || we.benchAngleDeg || we.grip);
+          const hasDetails = !!(we.machineName || we.seatHeight || we.benchAngleDeg || we.grip || we.notes);
           const detailParts: string[] = [];
           if (we.machineName) detailParts.push(we.machineName);
           if (we.seatHeight) detailParts.push(`Seat: ${we.seatHeight}`);
           if (we.benchAngleDeg) detailParts.push(`${we.benchAngleDeg}°`);
           if (we.grip) detailParts.push(we.grip);
           const subtitle = hasDetails ? detailParts.join(' • ') : undefined;
+          const notesText = we.notes ? we.notes : undefined;
           return (
             <View key={we.id} style={styles.exerciseCardWrap}>
               <ExerciseCard
                 title={we.exerciseName}
                 subtitle={subtitle}
+                notes={notesText}
                 imageUri={undefined}
                 sets={sets}
                 onAddSet={() => handleAddSet(we.id)}
@@ -369,8 +378,9 @@ export default function SessionTabScreen() {
       </Modal>
 
       <Modal visible={!!editingExerciseDetails} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={handleCancelExerciseDetails}>
-          <Pressable style={styles.exerciseDetailsModal} onPress={(e) => e.stopPropagation()}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <Pressable style={styles.exerciseDetailsModal} onPress={Keyboard.dismiss}>
             <ThemedText type="subtitle" style={styles.exerciseDetailsTitle}>
               {editingExerciseDetails?.exerciseName}
             </ThemedText>
@@ -405,6 +415,16 @@ export default function SessionTabScreen() {
                 value={optGrip}
                 onChangeText={setOptGrip}
               />
+              <TextInput
+                style={styles.notesTextArea}
+                placeholder="Personal notes (e.g., form tips, adjustments...)"
+                placeholderTextColor="#687076"
+                value={optNotes}
+                onChangeText={setOptNotes}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
             </View>
             <View style={styles.modalButtons}>
               <Pressable style={styles.modalCancel} onPress={handleCancelExerciseDetails}>
@@ -414,8 +434,9 @@ export default function SessionTabScreen() {
                 <ThemedText style={styles.modalSaveText}>Save</ThemedText>
               </Pressable>
             </View>
-          </Pressable>
-        </Pressable>
+            </Pressable>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal visible={createExerciseModalVisible} transparent animationType="fade">
@@ -580,5 +601,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: BrandColors.text,
     backgroundColor: '#F8FAFC',
+  },
+  notesTextArea: {
+    borderWidth: 1,
+    borderColor: BrandColors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: BrandColors.text,
+    backgroundColor: '#F8FAFC',
+    minHeight: 80,
   },
 });

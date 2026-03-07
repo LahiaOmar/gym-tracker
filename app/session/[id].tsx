@@ -20,7 +20,8 @@ import { ThemedView } from '@/components/themed-view';
 import { BrandColors } from '@/constants/theme';
 import { useStorage } from '@/contexts/StorageContext';
 import { setVolume } from '@/src/domain';
-import type { WorkoutSession, WorkoutSet } from '@/src/domain';
+import type { WorkoutSession, WorkoutSet, WorkoutExercise } from '@/src/domain';
+import type { ExerciseOptionalDetails } from '@/components/session-detail/ExerciseSetTableCard';
 
 function formatDateShort(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -48,6 +49,7 @@ export default function SessionDetailScreen() {
     name: string;
     sets: WorkoutSet[];
     exerciseId: string;
+    optionalDetails: ExerciseOptionalDetails;
   }[]>([]);
   const [totalVolume, setTotalVolume] = useState(0);
   const [totalSets, setTotalSets] = useState(0);
@@ -67,13 +69,24 @@ export default function SessionDetailScreen() {
     setCategoryName(cat?.name ?? '');
 
     const weList = await repositories.workoutExercise.list({ filter: { sessionId: s.id } });
-    const list: { name: string; sets: WorkoutSet[]; exerciseId: string }[] = [];
+    const list: { name: string; sets: WorkoutSet[]; exerciseId: string; optionalDetails: ExerciseOptionalDetails }[] = [];
     let vol = 0;
     let setCount = 0;
     for (const we of weList) {
       const ex = await repositories.exercise.getById(we.exerciseId);
       const sets = await repositories.workoutSet.list({ filter: { workoutExerciseId: we.id } });
-      list.push({ name: ex?.name ?? '?', sets, exerciseId: we.exerciseId });
+      list.push({
+        name: ex?.name ?? '?',
+        sets,
+        exerciseId: we.exerciseId,
+        optionalDetails: {
+          machineName: we.machineName,
+          seatHeight: we.seatHeight,
+          benchAngleDeg: we.benchAngleDeg,
+          grip: we.grip,
+          notes: we.notes,
+        },
+      });
       for (const set of sets) {
         vol += setVolume(set);
         setCount += 1;
@@ -185,7 +198,7 @@ export default function SessionDetailScreen() {
             totalSets={totalSets}
           />
           <View style={styles.exercisesList}>
-            {exercisesWithSets.map(({ name, sets, exerciseId }, index) => (
+            {exercisesWithSets.map(({ name, sets, exerciseId, optionalDetails }, index) => (
               <ExerciseSetTableCard
                 key={`${exerciseId}-${name}`}
                 exerciseName={name}
@@ -194,6 +207,7 @@ export default function SessionDetailScreen() {
                 prSetIndex={prSetIndexByExercise[index] ?? -1}
                 prOnWeight={true}
                 prBadgeVariant="trending_up"
+                optionalDetails={optionalDetails}
               />
             ))}
           </View>
