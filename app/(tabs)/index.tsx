@@ -258,24 +258,35 @@ export default function HomeScreen() {
         </View>
         <View style={styles.activityList}>
           {sessionsLoading ? (
-            <View style={styles.activityCard}>
-              <View style={styles.activityIconWrap}>
-                <MaterialIcons name="fitness-center" size={24} color={PERFORMANCE_BLUE} />
-              </View>
-              <View style={styles.activityContent}>
-                <ActivityIndicator size="small" color={ACCENT} style={styles.recentRefreshSpinner} />
-                <Text style={styles.activityMeta}>Updating…</Text>
+            <View style={styles.activityCardWrapper}>
+              <View style={styles.activityCard}>
+                <View style={styles.activityIconWrap}>
+                  <MaterialIcons name="fitness-center" size={24} color={PERFORMANCE_BLUE} />
+                </View>
+                <View style={styles.activityContent}>
+                  <ActivityIndicator size="small" color={ACCENT} style={styles.recentRefreshSpinner} />
+                  <Text style={styles.activityMeta}>Updating…</Text>
+                </View>
               </View>
             </View>
           ) : recentActivities.length === 0 ? (
-            <View style={styles.activityCard}>
-              <View style={styles.activityIconWrap}>
-                <MaterialIcons name="fitness-center" size={24} color={PERFORMANCE_BLUE} />
+            <View style={styles.emptyStateCard}>
+              <View style={styles.emptyStateIconContainer}>
+                <View style={styles.emptyStateIconRing}>
+                  <MaterialIcons name="fitness-center" size={32} color={ACCENT} />
+                </View>
               </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityName}>No sessions yet</Text>
-                <Text style={styles.activityMeta}>Start your first workout</Text>
-              </View>
+              <Text style={styles.emptyStateTitle}>No workouts yet</Text>
+              <Text style={styles.emptyStateSubtitle}>
+                Start your fitness journey today!
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.emptyStateButton, pressed && styles.buttonPressed]}
+                onPress={() => router.push('/select-category')}
+              >
+                <MaterialIcons name="add" size={20} color="#fff" />
+                <Text style={styles.emptyStateButtonText}>Start First Workout</Text>
+              </Pressable>
             </View>
           ) : (
             recentActivities.map((item) => {
@@ -543,6 +554,60 @@ const styles = StyleSheet.create({
   recentRefreshSpinner: { marginVertical: 4 },
   activityName: { fontSize: 14, fontWeight: '700', color: DARK_GREY },
   activityMeta: { fontSize: 12, color: SLATE_400 },
+
+  emptyStateCard: {
+    backgroundColor: BrandColors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: SLATE_100,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emptyStateIconContainer: {
+    marginBottom: 16,
+  },
+  emptyStateIconRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,107,53,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,107,53,0.2)',
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: DARK_GREY,
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: SLATE_400,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: ACCENT,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  emptyStateButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
   activityRightRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   activityRight: { alignItems: 'flex-end' },
   activityVolume: { fontSize: 14, fontWeight: '700', color: DARK_GREY },
