@@ -76,7 +76,11 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   }, [repositories, user]);
 
   useEffect(() => {
-    if (!isReady || !user || !repositories) return;
+    if (!isReady) return;
+    if (!user || !repositories) {
+      setIsLoading(false);
+      return;
+    }
     refetch();
   }, [isReady, user?.id, repositories, refetch]);
 
