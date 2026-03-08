@@ -41,11 +41,17 @@ export default function SelectCategoryScreen() {
   const [search, setSearch] = useState('');
   const [createModalVisible, setCreateModalVisible] = useState(false);
 
+  const loadExercises = useCallback(async () => {
+    if (!repositories || !user) return;
+    const exerciseList = await repositories.exercise.list({ filter: { userId: user.id } });
+    setExercises(exerciseList);
+  }, [repositories, user]);
+
   const load = useCallback(async () => {
     if (!repositories || !user) return;
     const [categoryList, exerciseList] = await Promise.all([
       repositories.trainingCategory.list({ filter: { userId: user.id } }),
-      repositories.exercise.list({ filter: { userId: user.id, isBuiltIn: true } }),
+      repositories.exercise.list({ filter: { userId: user.id } }),
     ]);
     setCategories(categoryList);
     setExercises(exerciseList);
@@ -139,6 +145,21 @@ export default function SelectCategoryScreen() {
       setCategories((prev) => [...prev, cat]);
     },
     [repositories, user]
+  );
+
+  const handleAddExercise = useCallback(
+    async (name: string) => {
+      if (!repositories || !user) return;
+      const newExercise = await repositories.exercise.create({
+        id: generateId(),
+        name,
+        userId: user.id,
+        isBuiltIn: false,
+      });
+      await loadExercises();
+      return newExercise;
+    },
+    [repositories, user, loadExercises]
   );
 
   const handleCancel = useCallback(() => {
@@ -280,6 +301,7 @@ export default function SelectCategoryScreen() {
         onSubmit={handleCreateWorkout}
         exercises={exercises}
         loading={loading}
+        onAddExercise={handleAddExercise}
       />
     </View>
   );

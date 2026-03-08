@@ -74,6 +74,7 @@ interface AddWorkoutModalProps {
   }) => Promise<void>;
   exercises: Exercise[];
   loading?: boolean;
+  onAddExercise?: (name: string) => Promise<Exercise | void>;
 }
 
 type Step = 1 | 2;
@@ -84,6 +85,7 @@ export function AddWorkoutModal({
   onSubmit,
   exercises,
   loading = false,
+  onAddExercise,
 }: AddWorkoutModalProps) {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>(1);
@@ -92,6 +94,8 @@ export function AddWorkoutModal({
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<string[]>([]);
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [newExerciseName, setNewExerciseName] = useState('');
+  const [addingExercise, setAddingExercise] = useState(false);
 
   const resetForm = useCallback(() => {
     setStep(1);
@@ -99,6 +103,7 @@ export function AddWorkoutModal({
     setSelectedIcon('fitness-center');
     setSelectedExerciseIds([]);
     setExerciseSearch('');
+    setNewExerciseName('');
   }, []);
 
   useEffect(() => {
@@ -131,6 +136,24 @@ export function AddWorkoutModal({
   const removeExercise = useCallback((exerciseId: string) => {
     setSelectedExerciseIds((prev) => prev.filter((id) => id !== exerciseId));
   }, []);
+
+  const handleAddExercise = useCallback(async () => {
+    const trimmedName = newExerciseName.trim();
+    if (!trimmedName || !onAddExercise) return;
+
+    setAddingExercise(true);
+    try {
+      const newExercise = await onAddExercise(trimmedName);
+      if (newExercise) {
+        setSelectedExerciseIds((prev) => [...prev, newExercise.id]);
+      }
+      setNewExerciseName('');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAddingExercise(false);
+    }
+  }, [newExerciseName, onAddExercise]);
 
   const handleNext = useCallback(() => {
     if (step === 1 && name.trim()) {
@@ -213,6 +236,10 @@ export function AddWorkoutModal({
                 setExerciseSearch={setExerciseSearch}
                 toggleExercise={toggleExercise}
                 removeExercise={removeExercise}
+                newExerciseName={newExerciseName}
+                setNewExerciseName={setNewExerciseName}
+                onAddExercise={handleAddExercise}
+                addingExercise={addingExercise}
               />
             )}
 
@@ -332,6 +359,10 @@ interface Step2ContentProps {
   setExerciseSearch: (search: string) => void;
   toggleExercise: (exerciseId: string) => void;
   removeExercise: (exerciseId: string) => void;
+  newExerciseName: string;
+  setNewExerciseName: (name: string) => void;
+  onAddExercise: () => void;
+  addingExercise: boolean;
 }
 
 function Step2Content({
@@ -342,6 +373,10 @@ function Step2Content({
   setExerciseSearch,
   toggleExercise,
   removeExercise,
+  newExerciseName,
+  setNewExerciseName,
+  onAddExercise,
+  addingExercise,
 }: Step2ContentProps) {
   return (
     <View style={styles.content}>
@@ -389,6 +424,34 @@ function Step2Content({
             <MaterialIcons name="close" size={20} color="#94A3B8" />
           </Pressable>
         )}
+      </View>
+
+      {/* Add New Exercise Row */}
+      <View style={styles.addExerciseRow}>
+        <TextInput
+          style={styles.addExerciseInput}
+          placeholder="Add new exercise..."
+          placeholderTextColor="#94A3B8"
+          value={newExerciseName}
+          onChangeText={setNewExerciseName}
+          onSubmitEditing={onAddExercise}
+          returnKeyType="done"
+        />
+        <Pressable
+          style={({ pressed }) => [
+            styles.addExerciseBtn,
+            (!newExerciseName.trim() || addingExercise) && styles.addExerciseBtnDisabled,
+            pressed && styles.addExerciseBtnPressed,
+          ]}
+          onPress={onAddExercise}
+          disabled={!newExerciseName.trim() || addingExercise}
+        >
+          {addingExercise ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <MaterialIcons name="add" size={20} color="#fff" />
+          )}
+        </Pressable>
       </View>
 
       {/* Exercise List */}
@@ -635,6 +698,38 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: BrandColors.text,
+  },
+  addExerciseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+  },
+  addExerciseInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: BrandColors.text,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  addExerciseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addExerciseBtnDisabled: {
+    opacity: 0.5,
+  },
+  addExerciseBtnPressed: {
+    opacity: 0.9,
   },
   exerciseList: {
     flex: 1,

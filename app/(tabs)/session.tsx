@@ -39,6 +39,7 @@ export default function SessionTabScreen() {
   const { activeSessionId, setActiveSessionId } = useActiveSession();
   const { user, repositories, isReady } = useStorage();
   const [categoryName, setCategoryName] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState('');
   const [elapsed, setElapsed] = useState(0);
   const [exercises, setExercises] = useState<ExerciseWithName[]>([]);
@@ -50,7 +51,6 @@ export default function SessionTabScreen() {
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseList, setExerciseList] = useState<Exercise[]>([]);
   const [editingExerciseDetails, setEditingExerciseDetails] = useState<ExerciseWithName | null>(null);
-  const [createExerciseModalVisible, setCreateExerciseModalVisible] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState('');
   const [optMachine, setOptMachine] = useState('');
   const [optSeatHeight, setOptSeatHeight] = useState('');
@@ -67,6 +67,7 @@ export default function SessionTabScreen() {
     }
     const cat = await repositories.trainingCategory.getById(session.categoryId);
     setCategoryName(cat?.name ?? '');
+    setCategoryId(session.categoryId);
     setStartedAt(session.startedAt);
 
     const weList = await repositories.workoutExercise.list({ filter: { sessionId: activeSessionId } });
@@ -188,18 +189,32 @@ export default function SessionTabScreen() {
 
   const handleSelectExercise = useCallback(
     async (exerciseId: string) => {
-      if (!repositories || !activeSessionId) return;
+      if (!repositories || !activeSessionId || !categoryId) return;
       const order = exercises.length + 1;
       await repositories.workoutExercise.create({
         sessionId: activeSessionId,
         exerciseId,
         order,
       });
+
+      const defaultExercises = await repositories.categoryDefaultExercise.list({
+        filter: { categoryId },
+      });
+      const alreadyDefault = defaultExercises.some((de) => de.exerciseId === exerciseId);
+      if (!alreadyDefault) {
+        const maxOrder = defaultExercises.reduce((max, de) => Math.max(max, de.order), 0);
+        await repositories.categoryDefaultExercise.create({
+          categoryId,
+          exerciseId,
+          order: maxOrder + 1,
+        });
+      }
+
       setAddExerciseModalVisible(false);
       setExerciseSearch('');
       await loadSession();
     },
-    [repositories, activeSessionId, exercises.length, loadSession]
+    [repositories, activeSessionId, categoryId, exercises.length, loadSession]
   );
 
   const handleOpenExerciseDetails = useCallback((we: ExerciseWithName) => {
@@ -240,7 +255,7 @@ export default function SessionTabScreen() {
 
   const handleCreateCustomExercise = useCallback(async () => {
     const name = newExerciseName.trim();
-    if (!name || !repositories || !user || !activeSessionId) return;
+    if (!name || !repositories || !user || !activeSessionId || !categoryId) return;
     const ex = await repositories.exercise.create({
       id: generateId(),
       userId: user.id,
@@ -253,10 +268,22 @@ export default function SessionTabScreen() {
       exerciseId: ex.id,
       order,
     });
-    setCreateExerciseModalVisible(false);
+
+    const defaultExercises = await repositories.categoryDefaultExercise.list({
+      filter: { categoryId },
+    });
+    const maxOrder = defaultExercises.reduce((max, de) => Math.max(max, de.order), 0);
+    await repositories.categoryDefaultExercise.create({
+      categoryId,
+      exerciseId: ex.id,
+      order: maxOrder + 1,
+    });
+
+    setAddExerciseModalVisible(false);
+    setExerciseSearch('');
     setNewExerciseName('');
     await loadSession();
-  }, [newExerciseName, repositories, user, activeSessionId, exercises.length, loadSession]);
+  }, [newExerciseName, repositories, user, activeSessionId, categoryId, exercises.length, loadSession]);
 
   const timerParts = useMemo(() => formatElapsedToParts(elapsed), [elapsed]);
 
@@ -381,16 +408,28 @@ export default function SessionTabScreen() {
             value={exerciseSearch}
             onChangeText={setExerciseSearch}
           />
-          <Pressable 
-            style={({ pressed }) => [styles.addExerciseButton, pressed && styles.addExerciseButtonPressed]} 
-            onPress={() => {
-              setAddExerciseModalVisible(false);
-              setTimeout(() => setCreateExerciseModalVisible(true), 300);
-            }}
-          >
-            <MaterialIcons name="add" size={20} color="#fff" />
-            <ThemedText style={styles.addExerciseButtonText}>Add New Exercise</ThemedText>
-          </Pressable>
+          <View style={styles.addExerciseRow}>
+            <TextInput
+              style={styles.addExerciseInput}
+              placeholder="Add new exercise..."
+              placeholderTextColor="#94A3B8"
+              value={newExerciseName}
+              onChangeText={setNewExerciseName}
+              onSubmitEditing={handleCreateCustomExercise}
+              returnKeyType="done"
+            />
+            <Pressable
+              style={({ pressed }) => [
+                styles.addExerciseBtn,
+                !newExerciseName.trim() && styles.addExerciseBtnDisabled,
+                pressed && styles.addExerciseBtnPressed,
+              ]}
+              onPress={handleCreateCustomExercise}
+              disabled={!newExerciseName.trim()}
+            >
+              <MaterialIcons name="add" size={20} color="#fff" />
+            </Pressable>
+          </View>
           <ScrollView>
             {exerciseList.map((ex) => (
               <Pressable
@@ -467,42 +506,6 @@ export default function SessionTabScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      <Modal visible={createExerciseModalVisible} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={() => {
-          setCreateExerciseModalVisible(false);
-          setTimeout(() => setAddExerciseModalVisible(true), 300);
-        }}>
-          <Pressable style={styles.createExerciseModal} onPress={(e) => e.stopPropagation()}>
-            <ThemedText type="subtitle" style={styles.createExerciseTitle}>
-              Add New Exercise
-            </ThemedText>
-            <TextInput
-              style={styles.createExerciseInput}
-              placeholder="Exercise name"
-              placeholderTextColor="#687076"
-              value={newExerciseName}
-              onChangeText={setNewExerciseName}
-              autoFocus
-            />
-            <View style={styles.modalButtons}>
-              <Pressable style={styles.modalCancel} onPress={() => {
-                setCreateExerciseModalVisible(false);
-                setNewExerciseName('');
-                setTimeout(() => setAddExerciseModalVisible(true), 300);
-              }}>
-                <ThemedText>Cancel</ThemedText>
-              </Pressable>
-              <Pressable 
-                style={[styles.modalSave, !newExerciseName.trim() && styles.modalSaveDisabled]} 
-                onPress={handleCreateCustomExercise}
-                disabled={!newExerciseName.trim()}
-              >
-                <ThemedText style={styles.modalSaveText}>Add</ThemedText>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -555,50 +558,36 @@ const styles = StyleSheet.create({
     color: BrandColors.text,
   },
   row: { padding: 16, borderBottomWidth: 1, borderBottomColor: BrandColors.border },
-  addExerciseButton: {
+  addExerciseRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 16,
     gap: 8,
-    backgroundColor: BrandColors.performanceAccent,
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginBottom: 16,
   },
-  addExerciseButtonPressed: {
-    opacity: 0.9,
-  },
-  addExerciseButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  createExerciseModal: {
-    backgroundColor: BrandColors.white,
-    borderRadius: 16,
-    padding: 24,
-    marginHorizontal: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  createExerciseTitle: {
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  createExerciseInput: {
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    borderRadius: 8,
-    padding: 12,
+  addExerciseInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     fontSize: 16,
     color: BrandColors.text,
-    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  modalSaveDisabled: {
+  addExerciseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: BrandColors.performanceAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addExerciseBtnDisabled: {
     opacity: 0.5,
+  },
+  addExerciseBtnPressed: {
+    opacity: 0.9,
   },
   exerciseDetailsModal: {
     backgroundColor: BrandColors.white,

@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useState } from 'react';
@@ -83,6 +84,7 @@ function formatOptionalDetails(details: ExerciseOptionalDetails): string[] {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { user, repositories, isReady } = useStorage();
   const { sessionItems, isLoading: sessionsLoading } = useSessions();
@@ -250,7 +252,7 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <Pressable onPress={() => router.push('/(tabs)/session')}>
+          <Pressable onPress={() => navigation.navigate('History')}>
             <Text style={styles.viewAllText}>VIEW ALL</Text>
           </Pressable>
         </View>
