@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/constants/theme';
-import { AddWorkoutModal } from '@/components/workout';
+import { AddWorkoutModal, EditWorkoutModal } from '@/components/workout';
 import { useActiveSession } from '@/contexts/ActiveSessionContext';
 import { useStorage } from '@/contexts/StorageContext';
 import type { TrainingCategory, Exercise } from '@/src/domain';
@@ -40,6 +40,9 @@ export default function SelectCategoryScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<TrainingCategory | null>(null);
+  const [editingDefaultExerciseIds, setEditingDefaultExerciseIds] = useState<string[]>([]);
 
   const loadExercises = useCallback(async () => {
     if (!repositories || !user) return;
@@ -194,6 +197,60 @@ export default function SelectCategoryScreen() {
     [repositories]
   );
 
+  const handleOpenEditModal = useCallback(
+    async (category: TrainingCategory) => {
+      if (!repositories) return;
+      try {
+        const defaultExercises = await repositories.categoryDefaultExercise.list({
+          filter: { categoryId: category.id },
+        });
+        const exerciseIds = defaultExercises
+          .sort((a, b) => a.order - b.order)
+          .map((de) => de.exerciseId);
+        setEditingCategory(category);
+        setEditingDefaultExerciseIds(exerciseIds);
+        setEditModalVisible(true);
+      } catch (e) {
+        console.error(e);
+        Alert.alert('Error', 'Could not load workout details');
+      }
+    },
+    [repositories]
+  );
+
+  const handleEditWorkout = useCallback(
+    async (data: { name: string; icon: MaterialIconName; exerciseIds: string[] }) => {
+      if (!repositories || !editingCategory) return;
+      try {
+        await repositories.trainingCategory.update(editingCategory.id, {
+          name: data.name,
+          icon: data.icon,
+        });
+
+        await repositories.categoryDefaultExercise.deleteByCategory(editingCategory.id);
+
+        if (data.exerciseIds.length > 0) {
+          await repositories.categoryDefaultExercise.bulkCreate(
+            data.exerciseIds.map((exerciseId, index) => ({
+              categoryId: editingCategory.id,
+              exerciseId,
+              order: index,
+            }))
+          );
+        }
+
+        await load();
+        setEditModalVisible(false);
+        setEditingCategory(null);
+        setEditingDefaultExerciseIds([]);
+      } catch (e) {
+        console.error(e);
+        Alert.alert('Error', 'Could not update workout');
+      }
+    },
+    [repositories, editingCategory, load]
+  );
+
   if (!isReady) {
     return (
       <View style={[styles.centered, styles.screen]}>
@@ -268,16 +325,28 @@ export default function SelectCategoryScreen() {
                     <Text style={styles.cardTitle}>{item.name}</Text>
                   </View>
                 </View>
-                <Pressable
-                  style={({ pressed }) => [styles.deleteBtn, pressed && styles.deleteBtnPressed]}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleDeleteCategory(item);
-                  }}
-                  hitSlop={8}
-                >
-                  <MaterialIcons name="delete-outline" size={22} color="#94A3B8" />
-                </Pressable>
+                <View style={styles.cardActions}>
+                  <Pressable
+                    style={({ pressed }) => [styles.editBtn, pressed && styles.editBtnPressed]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleOpenEditModal(item);
+                    }}
+                    hitSlop={8}
+                  >
+                    <MaterialIcons name="edit" size={22} color="#94A3B8" />
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.deleteBtn, pressed && styles.deleteBtnPressed]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteCategory(item);
+                    }}
+                    hitSlop={8}
+                  >
+                    <MaterialIcons name="delete-outline" size={22} color="#94A3B8" />
+                  </Pressable>
+                </View>
               </Pressable>
             )}
           />
@@ -299,6 +368,22 @@ export default function SelectCategoryScreen() {
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
         onSubmit={handleCreateWorkout}
+        exercises={exercises}
+        loading={loading}
+        onAddExercise={handleAddExercise}
+      />
+
+      {/* Edit Workout Modal */}
+      <EditWorkoutModal
+        visible={editModalVisible}
+        onClose={() => {
+          setEditModalVisible(false);
+          setEditingCategory(null);
+          setEditingDefaultExerciseIds([]);
+        }}
+        onSubmit={handleEditWorkout}
+        category={editingCategory}
+        defaultExerciseIds={editingDefaultExerciseIds}
         exercises={exercises}
         loading={loading}
         onAddExercise={handleAddExercise}
@@ -409,6 +494,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: PERFORMANCE_BLUE,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  editBtn: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  editBtnPressed: {
+    backgroundColor: 'rgba(10, 29, 55, 0.1)',
   },
   deleteBtn: {
     padding: 8,
