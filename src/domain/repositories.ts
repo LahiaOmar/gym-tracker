@@ -9,6 +9,7 @@ import type {
   WorkoutSession,
   WorkoutExercise,
   WorkoutSet,
+  CategoryDefaultExercise,
 } from './entities';
 
 export interface ListOptions<TFilter = object> {
@@ -66,4 +67,12 @@ export interface WorkoutSetRepository {
   getById(id: string): Promise<WorkoutSet | null>;
   list(options?: ListOptions<{ workoutExerciseId: string }>): Promise<WorkoutSet[]>;
   listSetsByExercise(userId: string, exerciseId: string, from?: string, to?: string): Promise<WorkoutSet[]>;
+}
+
+export interface CategoryDefaultExerciseRepository {
+  create(entity: Omit<CategoryDefaultExercise, 'id'> & { id?: string }): Promise<CategoryDefaultExercise>;
+  delete(id: string): Promise<void>;
+  deleteByCategory(categoryId: string): Promise<void>;
+  list(options?: ListOptions<{ categoryId: string }>): Promise<CategoryDefaultExercise[]>;
+  bulkCreate(entities: Array<Omit<CategoryDefaultExercise, 'id'>>): Promise<CategoryDefaultExercise[]>;
 }

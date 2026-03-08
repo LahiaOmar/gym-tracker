@@ -17,9 +17,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandColors } from '@/constants/theme';
+import { AddWorkoutModal } from '@/components/workout';
 import { useActiveSession } from '@/contexts/ActiveSessionContext';
 import { useStorage } from '@/contexts/StorageContext';
-import type { TrainingCategory } from '@/src/domain';
+import type { TrainingCategory, Exercise } from '@/src/domain';
 import { generateId } from '@/src/adapters/sqlite/helpers';
 
 const PERFORMANCE_BLUE = BrandColors.performanceBlue;
@@ -28,46 +29,6 @@ const IOS_BG = BrandColors.iosBg;
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
-const AVAILABLE_ICONS: MaterialIconName[] = [
-  'fitness-center',
-  'sports-gymnastics',
-  'directions-run',
-  'rowing',
-  'accessibility-new',
-  'self-improvement',
-  'sports-martial-arts',
-  'sports-kabaddi',
-  'sports-handball',
-  'sports-tennis',
-  'sports-soccer',
-  'sports-basketball',
-  'sports-volleyball',
-  'pool',
-  'pedal-bike',
-  'hiking',
-  'downhill-skiing',
-  'snowboarding',
-  'surfing',
-  'skateboarding',
-  'sports-golf',
-  'sports-baseball',
-  'sports-hockey',
-  'sports-rugby',
-  'sports-cricket',
-  'sports-mma',
-  'sports-motorsports',
-  'sports-esports',
-  'emoji-events',
-  'military-tech',
-  'timer',
-  'speed',
-  'bolt',
-  'whatshot',
-  'local-fire-department',
-  'favorite',
-  'star',
-];
-
 export default function SelectCategoryScreen() {
   const router = useRouter();
   const navigation = useNavigation<any>();
@@ -75,17 +36,19 @@ export default function SelectCategoryScreen() {
   const { setActiveSessionId } = useActiveSession();
   const { user, repositories, isReady } = useStorage();
   const [categories, setCategories] = useState<TrainingCategory[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [creating, setCreating] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState<MaterialIconName>('fitness-center');
 
   const load = useCallback(async () => {
     if (!repositories || !user) return;
-    const list = await repositories.trainingCategory.list({ filter: { userId: user.id } });
-    setCategories(list);
+    const [categoryList, exerciseList] = await Promise.all([
+      repositories.trainingCategory.list({ filter: { userId: user.id } }),
+      repositories.exercise.list({ filter: { userId: user.id, isBuiltIn: true } }),
+    ]);
+    setCategories(categoryList);
+    setExercises(exerciseList);
   }, [repositories, user]);
 
   useEffect(() => {
@@ -111,6 +74,19 @@ export default function SelectCategoryScreen() {
           startedAt: new Date().toISOString(),
           endedAt: null,
         });
+
+        const defaultExercises = await repositories.categoryDefaultExercise.list({
+          filter: { categoryId: category.id },
+        });
+
+        for (const defaultEx of defaultExercises) {
+          await repositories.workoutExercise.create({
+            sessionId: session.id,
+            exerciseId: defaultEx.exerciseId,
+            order: defaultEx.order,
+          });
+        }
+
         setActiveSessionId(session.id);
         navigation.dispatch(
           CommonActions.reset({
@@ -139,28 +115,31 @@ export default function SelectCategoryScreen() {
     [repositories, user, setActiveSessionId, navigation]
   );
 
-  const handleCreateCategory = useCallback(async () => {
-    const name = newName.trim();
-    if (!name || !repositories || !user) return;
-    setCreating(true);
-    try {
+  const handleCreateWorkout = useCallback(
+    async (data: { name: string; icon: MaterialIconName; exerciseIds: string[] }) => {
+      if (!repositories || !user) return;
+      const categoryId = generateId();
       const cat = await repositories.trainingCategory.create({
-        id: generateId(),
+        id: categoryId,
         userId: user.id,
-        name,
-        icon: selectedIcon,
+        name: data.name,
+        icon: data.icon,
       });
+
+      if (data.exerciseIds.length > 0) {
+        await repositories.categoryDefaultExercise.bulkCreate(
+          data.exerciseIds.map((exerciseId, index) => ({
+            categoryId,
+            exerciseId,
+            order: index,
+          }))
+        );
+      }
+
       setCategories((prev) => [...prev, cat]);
-      setNewName('');
-      setSelectedIcon('fitness-center');
-      setCreateModalVisible(false);
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Could not create category');
-    } finally {
-      setCreating(false);
-    }
-  }, [newName, repositories, user, selectedIcon]);
+    },
+    [repositories, user]
+  );
 
   const handleCancel = useCallback(() => {
     router.back();
@@ -294,81 +273,14 @@ export default function SelectCategoryScreen() {
         </>
       )}
 
-      {/* Create category modal */}
-      {createModalVisible && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <Pressable style={styles.modalBackdrop} onPress={() => setCreateModalVisible(false)} />
-          <View style={[styles.modalCard, { marginTop: 80 + topPad }]}>
-            <Text style={styles.modalTitle}>Create Custom Category</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="New category name"
-              placeholderTextColor="#64748B"
-              value={newName}
-              onChangeText={setNewName}
-              editable={!creating}
-              autoFocus
-            />
-
-            <Text style={styles.iconSelectorLabel}>Select Icon</Text>
-            <View style={styles.selectedIconPreview}>
-              <View style={styles.selectedIconBox}>
-                <MaterialIcons name={selectedIcon} size={32} color={PERFORMANCE_BLUE} />
-              </View>
-              <Text style={styles.selectedIconName}>{selectedIcon}</Text>
-            </View>
-
-            <FlatList
-              data={AVAILABLE_ICONS}
-              keyExtractor={(item) => item}
-              numColumns={5}
-              style={styles.iconGrid}
-              contentContainerStyle={styles.iconGridContent}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item: iconName }) => (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.iconOption,
-                    selectedIcon === iconName && styles.iconOptionSelected,
-                    pressed && styles.iconOptionPressed,
-                  ]}
-                  onPress={() => setSelectedIcon(iconName)}
-                >
-                  <MaterialIcons
-                    name={iconName}
-                    size={24}
-                    color={selectedIcon === iconName ? '#fff' : PERFORMANCE_BLUE}
-                  />
-                </Pressable>
-              )}
-            />
-
-            <View style={styles.modalActions}>
-              <Pressable
-                style={({ pressed }) => [styles.modalBtn, pressed && styles.modalBtnPressed]}
-                onPress={() => {
-                  setCreateModalVisible(false);
-                  setNewName('');
-                  setSelectedIcon('fitness-center');
-                }}
-              >
-                <Text style={styles.modalBtnLabel}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.modalBtnAccent,
-                  (!newName.trim() || creating) && styles.modalBtnDisabled,
-                  pressed && styles.modalBtnPressed,
-                ]}
-                onPress={handleCreateCategory}
-                disabled={!newName.trim() || creating}
-              >
-                <Text style={styles.modalBtnAccentLabel}>Add</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      )}
+      {/* Add Workout Modal */}
+      <AddWorkoutModal
+        visible={createModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+        onSubmit={handleCreateWorkout}
+        exercises={exercises}
+        loading={loading}
+      />
     </View>
   );
 }
@@ -503,100 +415,4 @@ const styles = StyleSheet.create({
   fabPressed: {
     transform: [{ scale: 0.9 }],
   },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  modalCard: {
-    marginHorizontal: 24,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    maxHeight: '70%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: PERFORMANCE_BLUE,
-    marginBottom: 12,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: BrandColors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: BrandColors.text,
-    marginBottom: 16,
-  },
-  iconSelectorLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  selectedIconPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  selectedIconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: 'rgba(10, 29, 55, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedIconName: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  iconGrid: {
-    maxHeight: 180,
-    marginBottom: 16,
-  },
-  iconGridContent: {
-    gap: 8,
-  },
-  iconOption: {
-    flex: 1,
-    aspectRatio: 1,
-    maxWidth: '18%',
-    margin: 2,
-    borderRadius: 10,
-    backgroundColor: 'rgba(10, 29, 55, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconOptionSelected: {
-    backgroundColor: PERFORMANCE_BLUE,
-  },
-  iconOptionPressed: {
-    opacity: 0.7,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'flex-end',
-  },
-  modalBtn: { padding: 8 },
-  modalBtnLabel: { fontSize: 16, color: BrandColors.slate },
-  modalBtnAccent: {
-    backgroundColor: ACCENT,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  modalBtnAccentLabel: { fontSize: 16, fontWeight: '600', color: '#fff' },
-  modalBtnDisabled: { opacity: 0.5 },
-  modalBtnPressed: { opacity: 0.8 },
 });

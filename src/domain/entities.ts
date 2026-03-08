@@ -50,6 +50,13 @@ export interface WorkoutExercise {
   notes?: string | null;
 }
 
+export interface CategoryDefaultExercise {
+  id: string;
+  categoryId: string;
+  exerciseId: string;
+  order: number;
+}
+
 export interface WorkoutSet extends Timestamped {
   id: string;
   workoutExerciseId: string;

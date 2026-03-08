@@ -240,17 +240,23 @@ export default function SessionTabScreen() {
 
   const handleCreateCustomExercise = useCallback(async () => {
     const name = newExerciseName.trim();
-    if (!name || !repositories || !user) return;
+    if (!name || !repositories || !user || !activeSessionId) return;
     const ex = await repositories.exercise.create({
       id: generateId(),
       userId: user.id,
       name,
       isBuiltIn: false,
     });
+    const order = exercises.length + 1;
+    await repositories.workoutExercise.create({
+      sessionId: activeSessionId,
+      exerciseId: ex.id,
+      order,
+    });
     setCreateExerciseModalVisible(false);
     setNewExerciseName('');
-    await loadExercises();
-  }, [newExerciseName, repositories, user, loadExercises]);
+    await loadSession();
+  }, [newExerciseName, repositories, user, activeSessionId, exercises.length, loadSession]);
 
   const timerParts = useMemo(() => formatElapsedToParts(elapsed), [elapsed]);
 
@@ -377,7 +383,10 @@ export default function SessionTabScreen() {
           />
           <Pressable 
             style={({ pressed }) => [styles.addExerciseButton, pressed && styles.addExerciseButtonPressed]} 
-            onPress={() => setCreateExerciseModalVisible(true)}
+            onPress={() => {
+              setAddExerciseModalVisible(false);
+              setTimeout(() => setCreateExerciseModalVisible(true), 300);
+            }}
           >
             <MaterialIcons name="add" size={20} color="#fff" />
             <ThemedText style={styles.addExerciseButtonText}>Add New Exercise</ThemedText>
@@ -459,7 +468,10 @@ export default function SessionTabScreen() {
       </Modal>
 
       <Modal visible={createExerciseModalVisible} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={() => setCreateExerciseModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => {
+          setCreateExerciseModalVisible(false);
+          setTimeout(() => setAddExerciseModalVisible(true), 300);
+        }}>
           <Pressable style={styles.createExerciseModal} onPress={(e) => e.stopPropagation()}>
             <ThemedText type="subtitle" style={styles.createExerciseTitle}>
               Add New Exercise
@@ -476,6 +488,7 @@ export default function SessionTabScreen() {
               <Pressable style={styles.modalCancel} onPress={() => {
                 setCreateExerciseModalVisible(false);
                 setNewExerciseName('');
+                setTimeout(() => setAddExerciseModalVisible(true), 300);
               }}>
                 <ThemedText>Cancel</ThemedText>
               </Pressable>

@@ -4,3 +4,4 @@ export { createExerciseRepository } from './ExerciseRepository';
 export { createWorkoutSessionRepository } from './WorkoutSessionRepository';
 export { createWorkoutExerciseRepository } from './WorkoutExerciseRepository';
 export { createWorkoutSetRepository } from './WorkoutSetRepository';
+export { createCategoryDefaultExerciseRepository } from './CategoryDefaultExerciseRepository';

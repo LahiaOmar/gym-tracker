@@ -12,6 +12,7 @@ import {
 import { up as migration001 } from './migrations/001_initial';
 import { up as migration002 } from './migrations/002_category_icon';
 import { up as migration003 } from './migrations/003_workout_exercise_notes';
+import { up as migration004 } from './migrations/004_category_default_exercises';
 
 const DB_NAME = 'gym_tracker.db';
 
@@ -48,6 +49,11 @@ async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
   if (version < 3) {
     await db.execAsync(migration003);
     await setMeta(db, SCHEMA_VERSION_KEY, '3');
+  }
+
+  if (version < 4) {
+    await db.execAsync(migration004);
+    await setMeta(db, SCHEMA_VERSION_KEY, '4');
   }
 }
 
