@@ -18,6 +18,7 @@ import { BrandColors } from '@/constants/theme';
 import { useSessions } from '@/contexts/SessionsContext';
 import type { SessionItem } from '@/contexts/SessionsContext';
 import { useStorage } from '@/contexts/StorageContext';
+import { displayWeight, getUnitLabel, getWeightUnit } from '@/utils/weight';
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -199,9 +200,9 @@ export function SessionsList() {
                     </View>
                   </View>
                   <View style={styles.cardRight}>
-                    <Text style={styles.cardVolume}>{item.volume.toLocaleString()}</Text>
+                    <Text style={styles.cardVolume}>{displayWeight(item.volume, getWeightUnit(user?.weightUnit), 0)}</Text>
                     <Text style={styles.cardVolumeLabel}>
-                      VOL ({user?.weightUnit?.toUpperCase() ?? 'KG'})
+                      VOL ({getUnitLabel(getWeightUnit(user?.weightUnit))})
                     </Text>
                   </View>
                 </Pressable>

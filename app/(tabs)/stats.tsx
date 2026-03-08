@@ -37,6 +37,7 @@ import {
 } from '@/utils/period';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { displayWeight, getWeightUnit } from '@/utils/weight';
 
 const SCREEN_PADDING = 20 * 2;
 const CARD_PADDING = 16 * 2;
@@ -205,7 +206,7 @@ export default function StatsTabScreen() {
     );
   }
 
-  const unit = user?.weightUnit ?? 'kg';
+  const unit = getWeightUnit(user?.weightUnit);
 
   const volumeChartData = {
     labels: volumeByWeek.map((p) => p.label),
@@ -247,7 +248,7 @@ export default function StatsTabScreen() {
         <ThemedView style={[styles.card, styles.cardHalf, { backgroundColor: cardBg, borderColor }]}>
           <ThemedText type="defaultSemiBold">This week</ThemedText>
           <ThemedText style={styles.detail}>
-            Volume: {weekVolume.toLocaleString()} {unit}
+            Volume: {displayWeight(weekVolume, unit, 0)} {unit}
           </ThemedText>
           <ThemedText style={styles.detail}>Sessions: {sessionsThisWeek}</ThemedText>
           <ThemedText style={styles.detail}>
@@ -257,7 +258,7 @@ export default function StatsTabScreen() {
         <ThemedView style={[styles.card, styles.cardHalf, { backgroundColor: cardBg, borderColor }]}>
           <ThemedText type="defaultSemiBold">This month</ThemedText>
           <ThemedText style={styles.detail}>
-            Volume: {monthVolume.toLocaleString()} {unit}
+            Volume: {displayWeight(monthVolume, unit, 0)} {unit}
           </ThemedText>
           <ThemedText style={styles.detail}>Sessions: {monthSessionsCount}</ThemedText>
           <ThemedText style={styles.detail}>Streak: {streak} days</ThemedText>
@@ -373,7 +374,7 @@ export default function StatsTabScreen() {
                 />
               </View>
               <ThemedText style={[styles.barValue, { color: labelColor }]}>
-                {c.volume.toLocaleString()} {unit}
+                {displayWeight(c.volume, unit, 0)} {unit}
               </ThemedText>
             </View>
           ))}
@@ -398,7 +399,7 @@ export default function StatsTabScreen() {
                 />
               </View>
               <ThemedText style={[styles.barValue, { color: labelColor }]}>
-                {e.volume.toLocaleString()} {unit} ({e.sessionCount})
+                {displayWeight(e.volume, unit, 0)} {unit} ({e.sessionCount})
               </ThemedText>
             </View>
           ))}
@@ -455,10 +456,10 @@ export default function StatsTabScreen() {
         {selectedExercise ? (
           <>
             <ThemedText style={styles.detail}>
-              Max weight: {maxWeight} {unit}
+              Max weight: {displayWeight(maxWeight, unit, 1)} {unit}
             </ThemedText>
             <ThemedText style={styles.detail}>
-              Best volume session: {bestVolume.toLocaleString()} {unit}
+              Best volume session: {displayWeight(bestVolume, unit, 0)} {unit}
             </ThemedText>
             {exerciseProgress.length > 0 && (
               <>

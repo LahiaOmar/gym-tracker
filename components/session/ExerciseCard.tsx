@@ -1,8 +1,10 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useState, useEffect } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { BrandColors } from '@/constants/theme';
-import type { WorkoutSet } from '@/src/domain';
+import type { WorkoutSet, WeightUnit } from '@/src/domain';
+import { parseWeightInput, toDisplayWeight } from '@/utils/weight';
 
 const PERFORMANCE_BLUE = BrandColors.performanceBlue;
 const ACCENT = BrandColors.performanceAccent;
@@ -30,6 +32,7 @@ interface ExerciseCardProps {
   addSetButtonLabel?: string;
   addSetButtonIcon?: keyof typeof MaterialIcons.glyphMap;
   disabled?: boolean;
+  weightUnit?: WeightUnit;
 }
 
 export function ExerciseCard({
@@ -49,6 +52,7 @@ export function ExerciseCard({
   addSetButtonLabel = 'Add Set',
   addSetButtonIcon = 'add-circle',
   disabled = false,
+  weightUnit = 'kg',
 }: ExerciseCardProps) {
   const isEmpty = !hasSets;
 
@@ -101,22 +105,25 @@ export function ExerciseCard({
         <>
           <View style={styles.gridHeader}>
             <Text style={[styles.gridHeaderCell, styles.setCol]}>Set</Text>
-            <Text style={[styles.gridHeaderCell, styles.weightCol]}>Weight (kg)</Text>
+            <Text style={[styles.gridHeaderCell, styles.weightCol]}>Weight ({weightUnit})</Text>
             <Text style={[styles.gridHeaderCell, styles.repsCol]}>Reps</Text>
             <Text style={[styles.gridHeaderCell, styles.doneCol]}>Done</Text>
           </View>
           <View style={styles.setsList}>
-            {sets.map(({ set, index, isCurrent }) => (
-              <SetRow
-                key={set.id}
-                setNumber={index + 1}
-                weight={set.weight}
-                reps={set.reps}
-                isCurrent={isCurrent}
-                onWeightChange={(v) => onWeightChange(set.id, v)}
-                onRepsChange={(v) => onRepsChange(set.id, v)}
-              />
-            ))}
+            {sets.map(({ set, index, isCurrent }) => {
+              const displayWeightValue = toDisplayWeight(set.weight, weightUnit);
+              return (
+                <SetRow
+                  key={set.id}
+                  setNumber={index + 1}
+                  weight={displayWeightValue}
+                  reps={set.reps}
+                  isCurrent={isCurrent}
+                  onWeightChange={(v) => onWeightChange(set.id, v)}
+                  onRepsChange={(v) => onRepsChange(set.id, v)}
+                />
+              );
+            })}
           </View>
           <Pressable
             style={({ pressed }) => [styles.actionBtn, styles.actionBtnBorder, pressed && styles.actionBtnPressed]}
@@ -148,6 +155,38 @@ function SetRow({
   onWeightChange,
   onRepsChange,
 }: SetRowProps) {
+  const [weightText, setWeightText] = useState(weight ? String(weight) : '');
+  const [repsText, setRepsText] = useState(reps ? String(reps) : '');
+
+  useEffect(() => {
+    const currentParsed = parseWeightInput(weightText);
+    const isSameValue = Math.abs(currentParsed - weight) < 0.0001;
+    if (!isSameValue) {
+      setWeightText(weight ? String(weight) : '');
+    }
+  }, [weight]);
+
+  useEffect(() => {
+    const currentParsed = repsText ? parseInt(repsText, 10) : 0;
+    if (currentParsed !== reps) {
+      setRepsText(reps ? String(reps) : '');
+    }
+  }, [reps]);
+
+  const handleWeightChange = (text: string) => {
+    const filtered = text.replace(/[^0-9.,]/g, '');
+    setWeightText(filtered);
+    const n = parseWeightInput(filtered);
+    onWeightChange(n);
+  };
+
+  const handleRepsChange = (text: string) => {
+    const filtered = text.replace(/[^0-9]/g, '');
+    setRepsText(filtered);
+    const n = filtered ? parseInt(filtered, 10) : 0;
+    if (!Number.isNaN(n)) onRepsChange(n);
+  };
+
   return (
     <View style={[styles.setRow, isCurrent && styles.setRowCurrent]}>
       <View style={[styles.setCol, styles.setNumWrap]}>
@@ -156,11 +195,8 @@ function SetRow({
       <View style={styles.weightCol}>
         <TextInput
           style={[styles.input, isCurrent ? styles.inputCurrent : styles.inputReadonly]}
-          value={weight ? String(weight) : ''}
-          onChangeText={(t) => {
-            const n = t ? parseFloat(t) : 0;
-            if (!Number.isNaN(n)) onWeightChange(n);
-          }}
+          value={weightText}
+          onChangeText={handleWeightChange}
           placeholder="80"
           placeholderTextColor="#94A3B8"
           keyboardType="decimal-pad"
@@ -171,11 +207,8 @@ function SetRow({
       <View style={styles.repsCol}>
         <TextInput
           style={[styles.input, isCurrent ? styles.inputCurrent : styles.inputReadonly]}
-          value={reps ? String(reps) : ''}
-          onChangeText={(t) => {
-            const n = t ? parseInt(t, 10) : 0;
-            if (!Number.isNaN(n)) onRepsChange(n);
-          }}
+          value={repsText}
+          onChangeText={handleRepsChange}
           placeholder="10"
           placeholderTextColor="#94A3B8"
           keyboardType="number-pad"

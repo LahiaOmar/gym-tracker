@@ -29,6 +29,7 @@ import type { Exercise, WorkoutExercise, WorkoutSet } from '@/src/domain';
 import { generateId } from '@/src/adapters/sqlite/helpers';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { getWeightUnit, toStorageWeight, toDisplayWeight } from '@/utils/weight';
 
 type ExerciseWithName = WorkoutExercise & { exerciseName: string };
 
@@ -118,11 +119,28 @@ export default function SessionTabScreen() {
 
   const handleUpdateSet = useCallback(
     async (setId: string, patch: { reps?: number; weight?: number }) => {
-      if (!repositories) return;
-      await repositories.workoutSet.update(setId, patch);
-      await loadSession();
+      if (!repositories || !user) return;
+      const unit = getWeightUnit(user.weightUnit);
+      const updatedPatch = { ...patch };
+      if (patch.weight !== undefined) {
+        updatedPatch.weight = toStorageWeight(patch.weight, unit);
+      }
+      
+      // Optimistically update local state to prevent input glitching
+      setSetsByWeId((prev) => {
+        const newState = { ...prev };
+        for (const weId of Object.keys(newState)) {
+          newState[weId] = newState[weId].map((set) =>
+            set.id === setId ? { ...set, ...updatedPatch } : set
+          );
+        }
+        return newState;
+      });
+      
+      // Persist to database without reloading (no re-render)
+      await repositories.workoutSet.update(setId, updatedPatch);
     },
-    [repositories, loadSession]
+    [repositories, user]
   );
 
   const handleDeleteSet = useCallback(
@@ -309,6 +327,7 @@ export default function SessionTabScreen() {
                 onRepsChange={(setId, value) => handleUpdateSet(setId, { reps: value })}
                 hasSets={hasSets}
                 disabled={exerciseIndex > 0 && !hasSets}
+                weightUnit={getWeightUnit(user?.weightUnit)}
               />
             </View>
           );

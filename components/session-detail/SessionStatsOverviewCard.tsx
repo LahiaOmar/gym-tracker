@@ -1,10 +1,12 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { BrandColors } from '@/constants/theme';
+import type { WeightUnit } from '@/src/domain';
+import { displayWeight } from '@/utils/weight';
 
 export interface SessionStatsOverviewCardProps {
   totalVolume: number;
-  totalVolumeUnit: string;
+  totalVolumeUnit: WeightUnit;
   totalSets: number;
 }
 
@@ -18,7 +20,7 @@ export function SessionStatsOverviewCard({
       <View style={styles.column}>
         <Text style={styles.label}>Total Volume</Text>
         <Text style={styles.value}>
-          {totalVolume.toLocaleString()}{' '}
+          {displayWeight(totalVolume, totalVolumeUnit, 0)}{' '}
           <Text style={styles.unit}>{totalVolumeUnit}</Text>
         </Text>
       </View>

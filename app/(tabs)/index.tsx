@@ -20,6 +20,7 @@ import { useSessions } from '@/contexts/SessionsContext';
 import { useStorage } from '@/contexts/StorageContext';
 import { getSessionDurationMins, computeStreak, setVolume } from '@/src/domain';
 import type { WorkoutSet } from '@/src/domain';
+import { displayWeight, getUnitLabel, getWeightUnit } from '@/utils/weight';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -308,10 +309,10 @@ export default function HomeScreen() {
                     <View style={styles.activityRightRow}>
                       <View style={styles.activityRight}>
                         <Text style={styles.activityVolume}>
-                          {item.volume.toLocaleString()}
+                          {displayWeight(item.volume, getWeightUnit(user?.weightUnit), 0)}
                         </Text>
                         <Text style={styles.activityVolumeLabel}>
-                          VOLUME ({user?.weightUnit?.toUpperCase() ?? 'KG'})
+                          VOLUME ({getUnitLabel(getWeightUnit(user?.weightUnit))})
                         </Text>
                       </View>
                       <MaterialIcons
@@ -348,7 +349,7 @@ export default function HomeScreen() {
                                     {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}
                                   </Text>
                                   <Text style={styles.exerciseVolumeText}>
-                                    {ex.totalVolume.toLocaleString()} {user?.weightUnit ?? 'kg'}
+                                    {displayWeight(ex.totalVolume, getWeightUnit(user?.weightUnit), 0)} {getWeightUnit(user?.weightUnit)}
                                   </Text>
                                 </View>
                               </View>

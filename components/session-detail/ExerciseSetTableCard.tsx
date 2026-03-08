@@ -3,7 +3,8 @@ import type { ComponentProps } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { BrandColors } from '@/constants/theme';
-import type { WorkoutSet } from '@/src/domain';
+import type { WorkoutSet, WeightUnit } from '@/src/domain';
+import { displayWeight } from '@/utils/weight';
 
 import { PRBadge, type PRBadgeVariant } from './PRBadge';
 
@@ -20,7 +21,7 @@ export interface ExerciseOptionalDetails {
 export interface ExerciseSetTableCardProps {
   exerciseName: string;
   sets: WorkoutSet[];
-  weightUnit: string;
+  weightUnit: WeightUnit;
   /** Which set index (0-based) has a PR for this exercise; -1 if none */
   prSetIndex?: number;
   /** Show PR badge on weight cell (true) or reps cell (false). Default true. */
@@ -106,7 +107,7 @@ export function ExerciseSetTableCard({
           <View key={set.id} style={styles.row}>
             <Text style={styles.setNum}>{index + 1}</Text>
             <View style={styles.cellWeight}>
-              <Text style={styles.cellValue}>{set.weight}</Text>
+              <Text style={styles.cellValue}>{displayWeight(set.weight, weightUnit, 1)}</Text>
               {prSetIndex === index && prOnWeight && <PRBadge variant={prBadgeVariant} />}
             </View>
             <View style={styles.cellReps}>

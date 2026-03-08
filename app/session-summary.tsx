@@ -25,6 +25,7 @@ import { useSessions } from '@/contexts/SessionsContext';
 import { useStorage } from '@/contexts/StorageContext';
 import { setVolume } from '@/src/domain';
 import type { WorkoutSession, WorkoutSet } from '@/src/domain';
+import { displayWeight, toDisplayWeight, getWeightUnit } from '@/utils/weight';
 
 function formatDurationMmSs(startedAt: string, endedAt: string): string {
   const s = new Date(startedAt).getTime();
@@ -52,10 +53,12 @@ function formatSessionSubtitle(categoryName: string, endedAt: string): string {
 }
 
 /** Best set = heaviest by weight; format "100kg x 5" */
-function getBestSetLabel(sets: WorkoutSet[], weightUnit: string): string {
+function getBestSetLabel(sets: WorkoutSet[], weightUnit: 'kg' | 'lb'): string {
   if (sets.length === 0) return '—';
   const best = sets.reduce((a, b) => (b.weight >= a.weight ? b : a));
-  return `${best.weight}${weightUnit} x ${best.reps}`;
+  const convertedWeight = toDisplayWeight(best.weight, weightUnit);
+  const formatted = Math.round(convertedWeight * 10) / 10;
+  return `${formatted}${weightUnit} x ${best.reps}`;
 }
 
 export default function SessionSummaryScreen() {
@@ -161,7 +164,7 @@ export default function SessionSummaryScreen() {
     );
   }
 
-  const weightUnit = user?.weightUnit ?? 'kg';
+  const weightUnit = getWeightUnit(user?.weightUnit);
   const subtitle = formatSessionSubtitle(categoryName, session.endedAt!);
 
   return (
@@ -187,7 +190,7 @@ export default function SessionSummaryScreen() {
             <SummaryStatCard
               icon="fitness-center"
               label="Volume"
-              value={totalVolume.toLocaleString()}
+              value={displayWeight(totalVolume, weightUnit, 0)}
               unit={weightUnit}
             />
           </View>

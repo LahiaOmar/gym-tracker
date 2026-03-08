@@ -22,6 +22,7 @@ import { useStorage } from '@/contexts/StorageContext';
 import { setVolume } from '@/src/domain';
 import type { WorkoutSession, WorkoutSet, WorkoutExercise } from '@/src/domain';
 import type { ExerciseOptionalDetails } from '@/components/session-detail/ExerciseSetTableCard';
+import { getWeightUnit } from '@/utils/weight';
 
 function formatDateShort(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -169,7 +170,7 @@ export default function SessionDetailScreen() {
     );
   }
 
-  const weightUnit = user?.weightUnit ?? 'kg';
+  const weightUnit = getWeightUnit(user?.weightUnit);
   const dateLabel = formatDateShort(session.startedAt);
   const durationLabel = formatDurationMins(session.startedAt, session.endedAt);
 
